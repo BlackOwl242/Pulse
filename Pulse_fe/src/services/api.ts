@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5182';
 
 const api = axios.create({
     baseURL: `${API_BASE_URL}/api`,
@@ -48,7 +48,7 @@ api.interceptors.response.use(
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');
                 if (typeof window !== 'undefined') {
-                    window.location.href = '/login';
+                    window.location.href = '/signin';
                 }
             }
         }
