@@ -1,0 +1,78 @@
+using Pulse.API.Models.Common;
+using Pulse.API.Models.Enums;
+using Pulse.API.Models.Entities.Identity;
+using Pulse.API.Models.Entities.Organization;
+
+namespace Pulse.API.Models.Entities.Communication;
+
+public class ChatChannel : BaseEntity
+{
+    public Guid WorkspaceId { get; set; }
+    public Workspace Workspace { get; set; } = null!;
+    public ChannelType Type { get; set; }
+    public string? Name { get; set; }
+    public Guid? TaskId { get; set; }
+    public Guid CreatedById { get; set; }
+    public User CreatedBy { get; set; } = null!;
+
+    public ICollection<ChatChannelMember> Members { get; set; } = new List<ChatChannelMember>();
+    public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
+}
+
+public class ChatChannelMember
+{
+    public Guid ChannelId { get; set; }
+    public ChatChannel Channel { get; set; } = null!;
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+    public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? LastReadAt { get; set; }
+    public bool IsMuted { get; set; }
+}
+
+public class ChatMessage : BaseEntity, ISoftDeletable
+{
+    public Guid ChannelId { get; set; }
+    public ChatChannel Channel { get; set; } = null!;
+    public Guid SenderId { get; set; }
+    public User Sender { get; set; } = null!;
+    public string Content { get; set; } = string.Empty;
+    public MessageType Type { get; set; } = MessageType.Text;
+    public Guid? ReplyToId { get; set; }
+    public ChatMessage? ReplyTo { get; set; }
+    public bool IsEdited { get; set; }
+
+    // Soft delete
+    public DateTime? DeletedAt { get; set; }
+    public bool IsDeleted { get; set; }
+}
+
+public class Notification : BaseEntity
+{
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+    public Guid WorkspaceId { get; set; }
+    public NotificationType Type { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Content { get; set; }
+    public string? EntityType { get; set; }
+    public Guid? EntityId { get; set; }
+    public Guid? ActorId { get; set; }
+    public User? Actor { get; set; }
+    public NotificationChannel Channel { get; set; } = NotificationChannel.InApp;
+    public bool IsRead { get; set; }
+    public DateTime? ReadAt { get; set; }
+}
+
+public class ActivityLog : BaseEntity
+{
+    public Guid WorkspaceId { get; set; }
+    public Guid ActorId { get; set; }
+    public User Actor { get; set; } = null!;
+    public string EntityType { get; set; } = string.Empty;
+    public Guid EntityId { get; set; }
+    public string Action { get; set; } = string.Empty;
+    public string? OldValues { get; set; } // JSON
+    public string? NewValues { get; set; } // JSON
+    public string Description { get; set; } = string.Empty;
+}

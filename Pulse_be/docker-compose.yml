@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # ===== PostgreSQL Database =====
+  pulse-db:
+    image: postgres:16-alpine
+    container_name: pulse-postgres
+    environment:
+      POSTGRES_DB: pulse_db
+      POSTGRES_USER: pulse_admin
+      POSTGRES_PASSWORD: pulse_secret_2024
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U pulse_admin -d pulse_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pulse-network
+
+  # ===== Redis (Cache + Pub/Sub for SignalR) =====
+  pulse-redis:
+    image: redis:7-alpine
+    container_name: pulse-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pulse-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+
+networks:
+  pulse-network:
+    driver: bridge

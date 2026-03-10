@@ -1,0 +1,226 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Pulse.API.Data;
+using Pulse.API.Models.DTOs.Task;
+using Pulse.API.Models.Entities.TaskManagement;
+using Pulse.API.Models.Enums;
+using Pulse.API.Services.Interfaces;
+
+namespace Pulse.API.Controllers;
+
+[ApiController]
+[Route("api/workspaces/{workspaceSlug}/projects/{projectId}/[controller]")]
+[Authorize]
+public class TasksController : ControllerBase
+{
+    private readonly ApplicationDbContext _db;
+    private readonly ICurrentUserService _currentUser;
+
+    public TasksController(ApplicationDbContext db, ICurrentUserService currentUser)
+    {
+        _db = db;
+        _currentUser = currentUser;
+    }
+
+    /// <summary>
+    /// Get all tasks in a project (list view)
+    /// </summary>
+    [HttpGet]
+    public async Task<ActionResult<List<TaskDto>>> GetAll(string workspaceSlug, Guid projectId,
+        [FromQuery] TaskItemStatus? status = null,
+        [FromQuery] TaskPriority? priority = null,
+        [FromQuery] Guid? assigneeId = null,
+        [FromQuery] string? search = null)
+    {
+        var query = _db.Tasks
+            .Where(t => t.ProjectId == projectId && t.ParentTaskId == null)
+            .AsQueryable();
+
+        if (status.HasValue) query = query.Where(t => t.Status == status.Value);
+        if (priority.HasValue) query = query.Where(t => t.Priority == priority.Value);
+        if (assigneeId.HasValue) query = query.Where(t => t.AssigneeId == assigneeId.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(t => EF.Functions.ILike(t.Title, $"%{search}%"));
+
+        var tasks = await query
+            .OrderBy(t => t.Position)
+            .Select(t => MapToDto(t))
+            .ToListAsync();
+
+        return Ok(tasks);
+    }
+
+    /// <summary>
+    /// Get board view (Kanban) — tasks grouped by status
+    /// </summary>
+    [HttpGet("board")]
+    public async Task<ActionResult<List<BoardColumnDto>>> GetBoardView(string workspaceSlug, Guid projectId)
+    {
+        var statuses = Enum.GetValues<TaskItemStatus>();
+        var board = new List<BoardColumnDto>();
+
+        foreach (var status in statuses)
+        {
+            var tasks = await _db.Tasks
+                .Where(t => t.ProjectId == projectId && t.ParentTaskId == null && t.Status == status)
+                .OrderBy(t => t.Position)
+                .Select(t => MapToDto(t))
+                .ToListAsync();
+
+            board.Add(new BoardColumnDto
+            {
+                Status = status,
+                Name = status.ToString(),
+                Tasks = tasks
+            });
+        }
+
+        return Ok(board);
+    }
+
+    /// <summary>
+    /// Get task by ID
+    /// </summary>
+    [HttpGet("/api/workspaces/{workspaceSlug}/tasks/{taskId}")]
+    public async Task<ActionResult<TaskDto>> GetById(string workspaceSlug, Guid taskId)
+    {
+        var task = await _db.Tasks
+            .Include(t => t.Assignee)
+            .Include(t => t.LabelAssignments).ThenInclude(la => la.Label)
+            .Include(t => t.Subtasks)
+            .FirstOrDefaultAsync(t => t.Id == taskId);
+
+        if (task == null) return NotFound();
+        return Ok(MapToDto(task));
+    }
+
+    /// <summary>
+    /// Create a new task
+    /// </summary>
+    [HttpPost]
+    public async Task<ActionResult<TaskDto>> Create(string workspaceSlug, Guid projectId, [FromBody] CreateTaskRequest request)
+    {
+        var userId = _currentUser.UserId!.Value;
+
+        var maxPosition = await _db.Tasks
+            .Where(t => t.ProjectId == projectId && t.Status == TaskItemStatus.Todo && t.ParentTaskId == null)
+            .MaxAsync(t => (int?)t.Position) ?? -1;
+
+        var task = new TaskItem
+        {
+            ProjectId = projectId,
+            ParentTaskId = request.ParentTaskId,
+            Title = request.Title,
+            Description = request.Description,
+            Priority = request.Priority,
+            AssigneeId = request.AssigneeId,
+            Deadline = request.Deadline,
+            StartDate = request.StartDate,
+            EstimatedMinutes = request.EstimatedMinutes,
+            Position = maxPosition + 1,
+            CreatedById = userId,
+        };
+
+        _db.Tasks.Add(task);
+        await _db.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetById),
+            new { workspaceSlug, taskId = task.Id },
+            MapToDto(task));
+    }
+
+    /// <summary>
+    /// Update an existing task
+    /// </summary>
+    [HttpPut("/api/workspaces/{workspaceSlug}/tasks/{taskId}")]
+    public async Task<IActionResult> Update(string workspaceSlug, Guid taskId, [FromBody] UpdateTaskRequest request)
+    {
+        var task = await _db.Tasks.FindAsync(taskId);
+        if (task == null) return NotFound();
+
+        if (request.Title != null) task.Title = request.Title;
+        if (request.Description != null) task.Description = request.Description;
+        if (request.Priority.HasValue) task.Priority = request.Priority.Value;
+        if (request.AssigneeId.HasValue) task.AssigneeId = request.AssigneeId;
+        if (request.Deadline.HasValue) task.Deadline = request.Deadline;
+        if (request.StartDate.HasValue) task.StartDate = request.StartDate;
+        if (request.EstimatedMinutes.HasValue) task.EstimatedMinutes = request.EstimatedMinutes;
+        if (request.Position.HasValue) task.Position = request.Position.Value;
+
+        if (request.Status.HasValue)
+        {
+            task.Status = request.Status.Value;
+            task.CompletedAt = request.Status.Value == TaskItemStatus.Done ? DateTime.UtcNow : null;
+        }
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Move task (change status and position — for drag & drop)
+    /// </summary>
+    [HttpPatch("/api/workspaces/{workspaceSlug}/tasks/{taskId}/move")]
+    public async Task<IActionResult> MoveTask(string workspaceSlug, Guid taskId, [FromBody] MoveTaskRequest request)
+    {
+        var task = await _db.Tasks.FindAsync(taskId);
+        if (task == null) return NotFound();
+
+        task.Status = request.Status;
+        task.Position = request.Position;
+        task.CompletedAt = request.Status == TaskItemStatus.Done ? DateTime.UtcNow : null;
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Delete a task (soft delete)
+    /// </summary>
+    [HttpDelete("/api/workspaces/{workspaceSlug}/tasks/{taskId}")]
+    public async Task<IActionResult> Delete(string workspaceSlug, Guid taskId)
+    {
+        var task = await _db.Tasks.FindAsync(taskId);
+        if (task == null) return NotFound();
+
+        task.IsDeleted = true;
+        task.DeletedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private static TaskDto MapToDto(TaskItem t) => new()
+    {
+        Id = t.Id,
+        ProjectId = t.ProjectId,
+        Title = t.Title,
+        Description = t.Description,
+        Status = t.Status,
+        Priority = t.Priority,
+        Assignee = t.Assignee != null ? new AssigneeDto
+        {
+            Id = t.Assignee.Id,
+            FirstName = t.Assignee.FirstName,
+            LastName = t.Assignee.LastName,
+            AvatarUrl = t.Assignee.AvatarUrl
+        } : null,
+        Deadline = t.Deadline,
+        StartDate = t.StartDate,
+        Position = t.Position,
+        EstimatedMinutes = t.EstimatedMinutes,
+        SubtaskCount = t.Subtasks?.Count ?? 0,
+        CompletedSubtaskCount = t.Subtasks?.Count(s => s.Status == TaskItemStatus.Done) ?? 0,
+        CommentCount = t.Comments?.Count ?? 0,
+        AttachmentCount = t.Attachments?.Count ?? 0,
+        Labels = t.LabelAssignments?.Select(la => new LabelDto
+        {
+            Id = la.Label.Id,
+            Name = la.Label.Name,
+            Color = la.Label.Color
+        }).ToList() ?? new(),
+        CreatedAt = t.CreatedAt,
+        CompletedAt = t.CompletedAt
+    };
+}
