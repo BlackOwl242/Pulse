@@ -5,6 +5,8 @@ import { taskService } from "@/services/taskService";
 import { projectService, Project } from "@/services/projectService";
 import { roleService } from "@/services/roleService";
 import { commentService, Comment } from "@/services/commentService";
+import { labelService, TaskLabel } from "@/services/labelService";
+import { checklistService, Checklist } from "@/services/checklistService";
 import { Task, BoardColumn } from "@/types/task";
 import { WorkspaceMember } from "@/types/roles";
 
@@ -53,6 +55,14 @@ export default function ProjectBoardPage() {
   const [newComment, setNewComment] = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
   const [postingComment, setPostingComment] = useState(false);
+  // Labels
+  const [projectLabels, setProjectLabels] = useState<TaskLabel[]>([]);
+  const [showLabelPicker, setShowLabelPicker] = useState(false);
+  const [newLabelName, setNewLabelName] = useState("");
+  const [newLabelColor, setNewLabelColor] = useState("#6366f1");
+  // Checklists
+  const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [newChecklistItemText, setNewChecklistItemText] = useState<Record<string, string>>({});
 
   const fetchBoard = useCallback(async () => {
     try {
@@ -84,7 +94,80 @@ export default function ProjectBoardPage() {
     setPanelOpen(true);
     setConfirmDelete(false);
     setComments([]);
+    setShowLabelPicker(false);
     fetchComments(task.id);
+    fetchLabels();
+    fetchChecklists(task.id);
+  };
+
+  const fetchChecklists = async (taskId: string) => {
+    try { setChecklists(await checklistService.getAll(slug, taskId)); } catch {}
+  };
+
+  const addChecklist = async () => {
+    if (!selectedTask) return;
+    try {
+      const cl = await checklistService.createChecklist(slug, selectedTask.id);
+      setChecklists([...checklists, cl]);
+    } catch {}
+  };
+
+  const addChecklistItem = async (checklistId: string) => {
+    const text = newChecklistItemText[checklistId]?.trim();
+    if (!text) return;
+    try {
+      const item = await checklistService.addItem(slug, checklistId, text);
+      setChecklists(checklists.map(c => c.id === checklistId ? { ...c, items: [...c.items, item] } : c));
+      setNewChecklistItemText({ ...newChecklistItemText, [checklistId]: "" });
+    } catch {}
+  };
+
+  const toggleChecklistItem = async (checklistId: string, itemId: string, isCompleted: boolean) => {
+    try {
+      await checklistService.updateItem(slug, itemId, { isCompleted: !isCompleted });
+      setChecklists(checklists.map(c => c.id === checklistId
+        ? { ...c, items: c.items.map(i => i.id === itemId ? { ...i, isCompleted: !isCompleted } : i) }
+        : c
+      ));
+    } catch {}
+  };
+
+  const deleteChecklistItem = async (checklistId: string, itemId: string) => {
+    try {
+      await checklistService.deleteItem(slug, itemId);
+      setChecklists(checklists.map(c => c.id === checklistId
+        ? { ...c, items: c.items.filter(i => i.id !== itemId) }
+        : c
+      ));
+    } catch {}
+  };
+
+  const fetchLabels = async () => {
+    try { setProjectLabels(await labelService.getAll(slug, projectId)); } catch {}
+  };
+
+  const toggleLabel = async (labelId: string) => {
+    if (!selectedTask) return;
+    const has = selectedTask.labels?.some((l) => l.id === labelId);
+    try {
+      if (has) {
+        await labelService.removeFromTask(slug, selectedTask.id, labelId);
+        setSelectedTask({ ...selectedTask, labels: selectedTask.labels.filter((l) => l.id !== labelId) });
+      } else {
+        await labelService.assignToTask(slug, selectedTask.id, labelId);
+        const label = projectLabels.find((l) => l.id === labelId);
+        if (label) setSelectedTask({ ...selectedTask, labels: [...(selectedTask.labels || []), label] });
+      }
+    } catch {}
+  };
+
+  const createLabel = async () => {
+    if (!newLabelName.trim()) return;
+    try {
+      const label = await labelService.create(slug, projectId, { name: newLabelName, color: newLabelColor });
+      setProjectLabels([...projectLabels, label]);
+      setNewLabelName("");
+    } catch {}
   };
 
   const fetchComments = async (taskId: string) => {
@@ -374,18 +457,104 @@ export default function ProjectBoardPage() {
               </div>
 
               {/* Labels */}
-              {selectedTask.labels?.length > 0 && (
-                <div>
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Labels</label>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {selectedTask.labels.map((label) => (
-                      <span key={label.id} className="text-xs px-2 py-1 rounded-full text-white font-medium" style={{ backgroundColor: label.color }}>
-                        {label.name}
-                      </span>
-                    ))}
-                  </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Labels</label>
+                  <button onClick={() => setShowLabelPicker(!showLabelPicker)} className="text-xs text-brand-500 hover:text-brand-600 font-medium">
+                    {showLabelPicker ? "Done" : "Edit"}
+                  </button>
                 </div>
-              )}
+                {/* Assigned labels */}
+                <div className="flex gap-1.5 flex-wrap mb-2">
+                  {selectedTask.labels?.length > 0 ? selectedTask.labels.map((label) => (
+                    <span key={label.id} className="text-xs px-2 py-1 rounded-full text-white font-medium" style={{ backgroundColor: label.color }}>
+                      {label.name}
+                    </span>
+                  )) : <span className="text-xs text-gray-400">No labels</span>}
+                </div>
+                {/* Label picker */}
+                {showLabelPicker && (
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 space-y-1.5">
+                    {projectLabels.map((label) => {
+                      const assigned = selectedTask.labels?.some((l) => l.id === label.id);
+                      return (
+                        <button key={label.id} onClick={() => toggleLabel(label.id)}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${assigned ? "bg-gray-50 dark:bg-gray-800" : ""}`}>
+                          <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: label.color }} />
+                          <span className="flex-1 text-left text-gray-700 dark:text-gray-300">{label.name}</span>
+                          {assigned && <svg className="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                        </button>
+                      );
+                    })}
+                    {/* Create new label */}
+                    <div className="flex gap-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800">
+                      <input type="color" value={newLabelColor} onChange={(e) => setNewLabelColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0 p-0" />
+                      <input type="text" value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)} placeholder="New label..." onKeyDown={(e) => { if (e.key === "Enter") createLabel(); }}
+                        className="flex-1 px-2 py-1 text-xs border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none" />
+                      <button onClick={createLabel} disabled={!newLabelName.trim()} className="px-2 py-1 text-xs font-medium text-brand-500 hover:text-brand-600 disabled:opacity-50">Add</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Checklists */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Checklists</label>
+                  <button onClick={addChecklist} className="text-xs text-brand-500 hover:text-brand-600 font-medium">+ Add</button>
+                </div>
+                {checklists.length === 0 ? (
+                  <p className="text-xs text-gray-400">No checklists</p>
+                ) : (
+                  <div className="space-y-3">
+                    {checklists.map((cl) => {
+                      const done = cl.items.filter(i => i.isCompleted).length;
+                      const total = cl.items.length;
+                      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                      return (
+                        <div key={cl.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-2.5">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex-1">{cl.title}</span>
+                            {total > 0 && <span className="text-[10px] text-gray-400">{done}/{total}</span>}
+                          </div>
+                          {total > 0 && (
+                            <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-2">
+                              <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                          )}
+                          <div className="space-y-1">
+                            {cl.items.map((item) => (
+                              <div key={item.id} className="flex items-center gap-2 group">
+                                <button onClick={() => toggleChecklistItem(cl.id, item.id, item.isCompleted)}
+                                  className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                                    item.isCompleted ? "bg-green-500 border-green-500" : "border-gray-300 dark:border-gray-600 hover:border-brand-500"
+                                  }`}>
+                                  {item.isCompleted && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                </button>
+                                <span className={`text-xs flex-1 ${item.isCompleted ? "line-through text-gray-400" : "text-gray-700 dark:text-gray-300"}`}>{item.content}</span>
+                                <button onClick={() => deleteChecklistItem(cl.id, item.id)}
+                                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Add item input */}
+                          <div className="flex gap-1.5 mt-2">
+                            <input type="text" value={newChecklistItemText[cl.id] || ""}
+                              onChange={(e) => setNewChecklistItemText({ ...newChecklistItemText, [cl.id]: e.target.value })}
+                              onKeyDown={(e) => { if (e.key === "Enter") addChecklistItem(cl.id); }}
+                              placeholder="Add item..."
+                              className="flex-1 px-2 py-1 text-xs border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none" />
+                            <button onClick={() => addChecklistItem(cl.id)} disabled={!newChecklistItemText[cl.id]?.trim()}
+                              className="px-2 py-1 text-xs font-medium text-brand-500 hover:text-brand-600 disabled:opacity-50">Add</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {/* Meta info */}
               <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-2">

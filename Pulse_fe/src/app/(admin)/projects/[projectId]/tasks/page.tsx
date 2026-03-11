@@ -58,15 +58,15 @@ export default function TaskListPage() {
   const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
-      const params: Record<string, string> = {};
-      if (search) params.search = search;
-      if (statusFilter) params.status = statusFilter;
-      if (priorityFilter) params.priority = priorityFilter;
-      if (assigneeFilter) params.assigneeId = assigneeFilter;
+      const queryParams: { status?: string; priority?: string; assigneeId?: string; search?: string } = {};
+      if (search) queryParams.search = search;
+      if (statusFilter) queryParams.status = statusFilter;
+      if (priorityFilter) queryParams.priority = priorityFilter;
+      if (assigneeFilter) queryParams.assigneeId = assigneeFilter;
 
       const [proj, taskList, mems] = await Promise.all([
         projectService.getById(slug, projectId),
-        taskService.getAll(slug, projectId, params),
+        taskService.getAll(slug, projectId, queryParams),
         roleService.getMembers(slug),
       ]);
       setProject(proj);

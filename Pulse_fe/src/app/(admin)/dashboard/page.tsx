@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { projectService, Project } from "@/services/projectService";
 import { taskService } from "@/services/taskService";
 import { roleService } from "@/services/roleService";
+import api from "@/services/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { BoardColumn } from "@/types/task";
 
@@ -234,6 +235,9 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Recent Activity */}
+      <ActivityCard slug={slug} />
     </div>
   );
 }
@@ -302,3 +306,55 @@ function DonutChart({ counts, total }: { counts: Record<string, number>; total: 
   );
 }
 
+
+interface Activity { id: string; action: string; description: string; entityType: string; createdAt: string; actor: { id: string; firstName: string; lastName: string } }
+
+function ActivityCard({ slug }: { slug: string }) {
+  const [activities, setActivities] = React.useState<Activity[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    api.get(`/workspaces/${slug}/activity`, { params: { limit: 10 } })
+      .then((r) => setActivities(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  const timeAgo = (d: string) => {
+    const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+        <h2 className="font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
+      </div>
+      {loading ? (
+        <div className="p-8 flex justify-center"><div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>
+      ) : activities.length === 0 ? (
+        <div className="p-8 text-center text-sm text-gray-400 dark:text-gray-500">No recent activity</div>
+      ) : (
+        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+          {activities.map((a) => (
+            <div key={a.id} className="flex items-start gap-3 px-6 py-3">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-brand-500 shrink-0 mt-0.5">
+                {a.actor?.firstName?.charAt(0)}{a.actor?.lastName?.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1">
+                  <span className="font-medium text-gray-900 dark:text-white">{a.actor?.firstName} {a.actor?.lastName}</span> {a.description}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(a.createdAt)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
