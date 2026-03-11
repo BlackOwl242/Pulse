@@ -526,16 +526,48 @@ function ScrollWord({ word, range, progress }: { word: string; range: [number, n
     return <motion.span style={{ opacity, color }} className="inline-block mr-[0.3em]">{word}</motion.span>;
 }
 
-// ─── Counter ───
+// ─── Counter with Scramble Effect ───
 function Counter({ target, suffix = "" }: { target: number; suffix?: string }) {
-    const [count, setCount] = useState(0);
+    const ref = useRef<HTMLSpanElement>(null);
+    const isInView = useInView(ref, { once: true, margin: "-50px" });
+    const finalStr = target.toLocaleString();
+    const [display, setDisplay] = useState("");
+
     useEffect(() => {
-        let n = 0;
-        const step = Math.max(1, Math.floor(target / 60));
-        const timer = setInterval(() => { n += step; if (n >= target) { setCount(target); clearInterval(timer); } else setCount(n); }, 20);
-        return () => clearInterval(timer);
-    }, [target]);
-    return <span style={{ fontFamily: "var(--font-mono)" }}>{count.toLocaleString()}{suffix}</span>;
+        if (!isInView) {
+            // Scramble random digits while not in view
+            const scramble = setInterval(() => {
+                setDisplay(
+                    finalStr.split("").map(c => {
+                        if (c === "," || c === ".") return c;
+                        return String(Math.floor(Math.random() * 10));
+                    }).join("")
+                );
+            }, 50);
+            return () => clearInterval(scramble);
+        }
+
+        // Resolve left-to-right once in view
+        let frame = 0;
+        const totalFrames = finalStr.length * 12;
+        const interval = setInterval(() => {
+            frame++;
+            const resolved = Math.floor((frame / totalFrames) * finalStr.length);
+            const result = finalStr.split("").map((char, i) => {
+                if (char === "," || char === ".") return char;
+                if (i < resolved) return char;
+                return String(Math.floor(Math.random() * 10));
+            }).join("");
+            setDisplay(result);
+            if (resolved >= finalStr.length) {
+                clearInterval(interval);
+                setDisplay(finalStr);
+            }
+        }, 40);
+        return () => clearInterval(interval);
+    }, [isInView, finalStr]);
+
+    return <span ref={ref} style={{ fontFamily: "var(--font-mono)" }}>{display}{suffix}</span>;
 }
 
 // ═══════════════════════════════════════════════
@@ -547,6 +579,52 @@ const glassBtn = "border border-white/[0.1] bg-white/[0.05] backdrop-blur-xl sha
 const glassBtnHover = "hover:bg-white/[0.1] hover:border-white/[0.2]";
 
 const mono = { fontFamily: "var(--font-mono)" };
+
+// ─── Scramble Text Effect ───
+const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+
+function ScrambleText({ text, delay = 0, className }: { text: string; delay?: number; className?: string }) {
+    const [display, setDisplay] = useState("");
+    const [started, setStarted] = useState(false);
+
+    useEffect(() => {
+        const startTimer = setTimeout(() => setStarted(true), delay);
+        return () => clearTimeout(startTimer);
+    }, [delay]);
+
+    useEffect(() => {
+        if (!started) {
+            // Show random chars as placeholder while waiting
+            setDisplay(text.split("").map(c => c === " " ? " " : CHARS[Math.floor(Math.random() * CHARS.length)]).join(""));
+            return;
+        }
+
+        let frame = 0;
+        const totalFrames = text.length * 3; // each char gets ~3 frames of scramble
+        
+        const interval = setInterval(() => {
+            frame++;
+            const resolved = Math.floor((frame / totalFrames) * text.length);
+            
+            const result = text.split("").map((char, i) => {
+                if (char === " ") return " ";
+                if (i < resolved) return char;
+                return CHARS[Math.floor(Math.random() * CHARS.length)];
+            }).join("");
+            
+            setDisplay(result);
+            
+            if (resolved >= text.length) {
+                clearInterval(interval);
+                setDisplay(text);
+            }
+        }, 30);
+
+        return () => clearInterval(interval);
+    }, [started, text]);
+
+    return <span className={className}>{display}</span>;
+}
 
 // ═══════════════════════════════════════════════
 // MAIN LANDING PAGE
@@ -560,7 +638,7 @@ export default function LandingPage() {
     const { scrollYProgress: revealProgress } = useScroll({ target: scrollRevealRef, offset: ["start end", "end start"] });
 
     return (
-        <div className="relative text-white selection:bg-brand-500/30 overflow-x-hidden">
+        <div className="relative text-white selection:bg-brand-500/30 overflow-x-hidden scroll-smooth">
             <WebGLGradient />
             <ParticleCloud />
             <Vignette />
@@ -617,8 +695,8 @@ export default function LandingPage() {
                     className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-center leading-[0.95] tracking-tight max-w-5xl"
                     style={mono}
                 >
-                    <span className="block text-white/95">Manage projects.</span>
-                    <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-purple-400 to-pink-400">Ship faster.</span>
+                    <ScrambleText text="Manage projects." delay={600} className="block text-white/95" />
+                    <ScrambleText text="Ship faster." delay={900} className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-purple-400 to-pink-400" />
                 </motion.h1>
 
                 <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9, duration: 0.7 }} className="mt-6 text-base md:text-lg text-white/90 text-center max-w-xl leading-relaxed" style={mono}>
@@ -676,9 +754,8 @@ export default function LandingPage() {
                         ].map((f, i) => (
                             <FadeInSection key={f.title} delay={i * 0.1}>
                                 <TiltCard className="group h-full">
-                                    <div className={`relative h-full p-6 rounded-2xl overflow-hidden transition-all duration-300 ${glass} ${glassHover}`}>
+                                    <div className={`relative h-full p-6 rounded-2xl overflow-hidden transition-all duration-500 ${glass} ${glassHover} hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(140,60,255,0.15),inset_0_1px_0_0_rgba(255,255,255,0.12)]`}>
                                         <div className={`absolute inset-0 bg-gradient-to-br ${f.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-                                        {/* Top reflection line */}
                                         <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                                         <div className="relative">
                                             <div className={`flex items-center justify-center w-10 h-10 mb-4 rounded-xl ${glassBtn} text-gray-400 group-hover:text-white transition-colors`}>
