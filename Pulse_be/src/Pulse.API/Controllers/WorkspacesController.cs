@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Pulse.API.Authorization;
 using Pulse.API.Data;
 using Pulse.API.Models.DTOs.Workspace;
 using Pulse.API.Models.Entities.Identity;
@@ -95,7 +96,7 @@ public class WorkspacesController : ControllerBase
         _db.Workspaces.Add(workspace);
 
         // Assign Admin role to creator
-        var adminRole = await _db.Roles.FirstAsync(r => r.Name == "Admin");
+        var adminRole = await _db.Roles.FirstAsync(r => r.Name == "Admin" && r.IsSystem);
         _db.UserWorkspaceRoles.Add(new UserWorkspaceRole
         {
             UserId = userId,
@@ -135,9 +136,78 @@ public class WorkspacesController : ControllerBase
     }
 
     /// <summary>
+    /// List workspace members with their roles
+    /// </summary>
+    [HttpGet("{slug}/members")]
+    public async Task<IActionResult> GetMembers(string slug)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        var members = await _db.UserWorkspaceRoles
+            .Where(uwr => uwr.WorkspaceId == workspace.Id)
+            .Select(uwr => new
+            {
+                UserId = uwr.UserId,
+                Email = uwr.User.Email,
+                FirstName = uwr.User.FirstName,
+                LastName = uwr.User.LastName,
+                AvatarUrl = uwr.User.AvatarUrl,
+                RoleId = uwr.RoleId,
+                RoleName = uwr.Role.Name,
+                AssignedAt = uwr.AssignedAt,
+            })
+            .ToListAsync();
+
+        return Ok(members);
+    }
+
+    /// <summary>
+    /// Change a member's role in the workspace
+    /// </summary>
+    [HttpPut("{slug}/members/{userId:guid}/role")]
+    [RequirePermission("workspace.manage")]
+    public async Task<IActionResult> ChangeMemberRole(string slug, Guid userId, [FromBody] ChangeMemberRoleRequest request)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound(new { message = "Workspace not found" });
+
+        var membership = await _db.UserWorkspaceRoles
+            .FirstOrDefaultAsync(uwr => uwr.UserId == userId && uwr.WorkspaceId == workspace.Id);
+        if (membership == null) return NotFound(new { message = "Member not found in workspace" });
+
+        // Verify the role exists and is accessible to this workspace
+        var role = await _db.Roles.FirstOrDefaultAsync(r =>
+            r.Id == request.RoleId && (r.WorkspaceId == null || r.WorkspaceId == workspace.Id));
+        if (role == null) return BadRequest(new { message = "Invalid role" });
+
+        // Prevent removing the last admin
+        if (membership.Role?.Name == "Admin" || (await _db.UserWorkspaceRoles
+            .CountAsync(uwr => uwr.WorkspaceId == workspace.Id &&
+                               uwr.Role.Name == "Admin") <= 1))
+        {
+            var currentRole = await _db.Roles.FindAsync(membership.RoleId);
+            if (currentRole?.Name == "Admin" && role.Name != "Admin")
+            {
+                var adminCount = await _db.UserWorkspaceRoles
+                    .CountAsync(uwr => uwr.WorkspaceId == workspace.Id && uwr.Role.Name == "Admin");
+                if (adminCount <= 1)
+                    return BadRequest(new { message = "Cannot remove the last admin" });
+            }
+        }
+
+        membership.RoleId = request.RoleId;
+        membership.AssignedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Role updated", roleId = request.RoleId, roleName = role.Name });
+    }
+
+    /// <summary>
     /// Invite a member to workspace
     /// </summary>
     [HttpPost("{slug}/invitations")]
+    [RequirePermission("workspace.invite_member")]
     public async Task<IActionResult> InviteMember(string slug, [FromBody] InviteMemberRequest request)
     {
         var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
@@ -170,3 +240,9 @@ public class WorkspacesController : ControllerBase
         return $"{slug}-{Guid.NewGuid().ToString("N")[..6]}";
     }
 }
+
+public class ChangeMemberRoleRequest
+{
+    public Guid RoleId { get; set; }
+}
+

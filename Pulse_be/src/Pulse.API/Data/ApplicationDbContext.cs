@@ -255,11 +255,101 @@ public class ApplicationDbContext : DbContext
 
         // Seed default roles
         modelBuilder.Entity<Role>().HasData(
-            new Role { Id = Guid.Parse("a1b2c3d4-0001-0001-0001-000000000001"), Name = "Admin", Description = "Full system access" },
-            new Role { Id = Guid.Parse("a1b2c3d4-0001-0001-0001-000000000002"), Name = "Manager", Description = "Team and project management" },
-            new Role { Id = Guid.Parse("a1b2c3d4-0001-0001-0001-000000000003"), Name = "Staff", Description = "Standard workspace member" },
-            new Role { Id = Guid.Parse("a1b2c3d4-0001-0001-0001-000000000004"), Name = "Guest", Description = "Limited read access" }
+            new Role { Id = Guid.Parse("a1b2c3d4-0001-0001-0001-000000000001"), Name = "Admin", Description = "Full system access", IsSystem = true },
+            new Role { Id = Guid.Parse("a1b2c3d4-0001-0001-0001-000000000002"), Name = "Manager", Description = "Team and project management", IsSystem = true },
+            new Role { Id = Guid.Parse("a1b2c3d4-0001-0001-0001-000000000003"), Name = "Staff", Description = "Standard workspace member", IsSystem = true },
+            new Role { Id = Guid.Parse("a1b2c3d4-0001-0001-0001-000000000004"), Name = "Guest", Description = "Limited read access", IsSystem = true }
         );
+
+        // Seed permissions
+        modelBuilder.Entity<Permission>().HasData(
+            // Workspace
+            new Permission { Id = Guid.Parse("f0000000-0001-0001-0001-000000000001"), Module = "workspace", Action = "manage", Resource = "workspace", Description = "Full workspace management" },
+            new Permission { Id = Guid.Parse("f0000000-0001-0001-0001-000000000002"), Module = "workspace", Action = "invite_member", Resource = "workspace", Description = "Invite members to workspace" },
+            new Permission { Id = Guid.Parse("f0000000-0001-0001-0001-000000000003"), Module = "workspace", Action = "remove_member", Resource = "workspace", Description = "Remove members from workspace" },
+            // Project
+            new Permission { Id = Guid.Parse("f0000000-0002-0001-0001-000000000001"), Module = "project", Action = "create", Resource = "project", Description = "Create projects" },
+            new Permission { Id = Guid.Parse("f0000000-0002-0001-0001-000000000002"), Module = "project", Action = "view", Resource = "project", Description = "View projects" },
+            new Permission { Id = Guid.Parse("f0000000-0002-0001-0001-000000000003"), Module = "project", Action = "edit", Resource = "project", Description = "Edit projects" },
+            new Permission { Id = Guid.Parse("f0000000-0002-0001-0001-000000000004"), Module = "project", Action = "delete", Resource = "project", Description = "Delete projects" },
+            new Permission { Id = Guid.Parse("f0000000-0002-0001-0001-000000000005"), Module = "project", Action = "manage_members", Resource = "project", Description = "Manage project members" },
+            // Task
+            new Permission { Id = Guid.Parse("f0000000-0003-0001-0001-000000000001"), Module = "task", Action = "create", Resource = "task", Description = "Create tasks" },
+            new Permission { Id = Guid.Parse("f0000000-0003-0001-0001-000000000002"), Module = "task", Action = "view", Resource = "task", Description = "View tasks" },
+            new Permission { Id = Guid.Parse("f0000000-0003-0001-0001-000000000003"), Module = "task", Action = "edit", Resource = "task", Description = "Edit tasks" },
+            new Permission { Id = Guid.Parse("f0000000-0003-0001-0001-000000000004"), Module = "task", Action = "delete", Resource = "task", Description = "Delete tasks" },
+            new Permission { Id = Guid.Parse("f0000000-0003-0001-0001-000000000005"), Module = "task", Action = "assign", Resource = "task", Description = "Assign tasks to members" },
+            new Permission { Id = Guid.Parse("f0000000-0003-0001-0001-000000000006"), Module = "task", Action = "change_status", Resource = "task", Description = "Change task status" },
+            // Team
+            new Permission { Id = Guid.Parse("f0000000-0004-0001-0001-000000000001"), Module = "team", Action = "create", Resource = "team", Description = "Create teams" },
+            new Permission { Id = Guid.Parse("f0000000-0004-0001-0001-000000000002"), Module = "team", Action = "view", Resource = "team", Description = "View teams" },
+            new Permission { Id = Guid.Parse("f0000000-0004-0001-0001-000000000003"), Module = "team", Action = "edit", Resource = "team", Description = "Edit teams" },
+            new Permission { Id = Guid.Parse("f0000000-0004-0001-0001-000000000004"), Module = "team", Action = "delete", Resource = "team", Description = "Delete teams" },
+            // Role
+            new Permission { Id = Guid.Parse("f0000000-0005-0001-0001-000000000001"), Module = "role", Action = "create", Resource = "role", Description = "Create custom roles" },
+            new Permission { Id = Guid.Parse("f0000000-0005-0001-0001-000000000002"), Module = "role", Action = "view", Resource = "role", Description = "View roles" },
+            new Permission { Id = Guid.Parse("f0000000-0005-0001-0001-000000000003"), Module = "role", Action = "edit", Resource = "role", Description = "Edit roles" },
+            new Permission { Id = Guid.Parse("f0000000-0005-0001-0001-000000000004"), Module = "role", Action = "delete", Resource = "role", Description = "Delete roles" }
+        );
+
+        // Seed RolePermissions — Admin gets ALL permissions
+        var allPermissionIds = new[]
+        {
+            "f0000000-0001-0001-0001-000000000001", "f0000000-0001-0001-0001-000000000002", "f0000000-0001-0001-0001-000000000003",
+            "f0000000-0002-0001-0001-000000000001", "f0000000-0002-0001-0001-000000000002", "f0000000-0002-0001-0001-000000000003",
+            "f0000000-0002-0001-0001-000000000004", "f0000000-0002-0001-0001-000000000005",
+            "f0000000-0003-0001-0001-000000000001", "f0000000-0003-0001-0001-000000000002", "f0000000-0003-0001-0001-000000000003",
+            "f0000000-0003-0001-0001-000000000004", "f0000000-0003-0001-0001-000000000005", "f0000000-0003-0001-0001-000000000006",
+            "f0000000-0004-0001-0001-000000000001", "f0000000-0004-0001-0001-000000000002", "f0000000-0004-0001-0001-000000000003",
+            "f0000000-0004-0001-0001-000000000004",
+            "f0000000-0005-0001-0001-000000000001", "f0000000-0005-0001-0001-000000000002", "f0000000-0005-0001-0001-000000000003",
+            "f0000000-0005-0001-0001-000000000004",
+        };
+
+        var adminRoleId = "a1b2c3d4-0001-0001-0001-000000000001";
+        var managerRoleId = "a1b2c3d4-0001-0001-0001-000000000002";
+        var staffRoleId = "a1b2c3d4-0001-0001-0001-000000000003";
+        var guestRoleId = "a1b2c3d4-0001-0001-0001-000000000004";
+
+        // Manager: no workspace.manage, no *.delete, no role.create/edit/delete
+        var managerPermissions = new[]
+        {
+            "f0000000-0001-0001-0001-000000000002", "f0000000-0001-0001-0001-000000000003", // invite, remove
+            "f0000000-0002-0001-0001-000000000001", "f0000000-0002-0001-0001-000000000002", "f0000000-0002-0001-0001-000000000003", "f0000000-0002-0001-0001-000000000005", // project CRUD (no delete)
+            "f0000000-0003-0001-0001-000000000001", "f0000000-0003-0001-0001-000000000002", "f0000000-0003-0001-0001-000000000003", "f0000000-0003-0001-0001-000000000005", "f0000000-0003-0001-0001-000000000006", // task (no delete)
+            "f0000000-0004-0001-0001-000000000001", "f0000000-0004-0001-0001-000000000002", "f0000000-0004-0001-0001-000000000003", // team (no delete)
+            "f0000000-0005-0001-0001-000000000002", // role view
+        };
+
+        // Staff: create/view/edit tasks, view projects/teams/roles
+        var staffPermissions = new[]
+        {
+            "f0000000-0002-0001-0001-000000000002", // project.view
+            "f0000000-0003-0001-0001-000000000001", "f0000000-0003-0001-0001-000000000002", "f0000000-0003-0001-0001-000000000003", "f0000000-0003-0001-0001-000000000006", // task create/view/edit/change_status
+            "f0000000-0004-0001-0001-000000000002", // team.view
+            "f0000000-0005-0001-0001-000000000002", // role.view
+        };
+
+        // Guest: view only
+        var guestPermissions = new[]
+        {
+            "f0000000-0002-0001-0001-000000000002", // project.view
+            "f0000000-0003-0001-0001-000000000002", // task.view
+            "f0000000-0004-0001-0001-000000000002", // team.view
+            "f0000000-0005-0001-0001-000000000002", // role.view
+        };
+
+        var rolePermissionSeed = new List<object>();
+        foreach (var pid in allPermissionIds)
+            rolePermissionSeed.Add(new { RoleId = Guid.Parse(adminRoleId), PermissionId = Guid.Parse(pid) });
+        foreach (var pid in managerPermissions)
+            rolePermissionSeed.Add(new { RoleId = Guid.Parse(managerRoleId), PermissionId = Guid.Parse(pid) });
+        foreach (var pid in staffPermissions)
+            rolePermissionSeed.Add(new { RoleId = Guid.Parse(staffRoleId), PermissionId = Guid.Parse(pid) });
+        foreach (var pid in guestPermissions)
+            rolePermissionSeed.Add(new { RoleId = Guid.Parse(guestRoleId), PermissionId = Guid.Parse(pid) });
+
+        modelBuilder.Entity<RolePermission>().HasData(rolePermissionSeed.ToArray());
     }
 
     public override int SaveChanges()
