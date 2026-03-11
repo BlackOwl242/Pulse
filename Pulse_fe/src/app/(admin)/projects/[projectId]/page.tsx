@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { taskService } from "@/services/taskService";
 import { projectService, Project } from "@/services/projectService";
 import { roleService } from "@/services/roleService";
+import { commentService, Comment } from "@/services/commentService";
 import { Task, BoardColumn } from "@/types/task";
 import { WorkspaceMember } from "@/types/roles";
 
@@ -47,6 +48,11 @@ export default function ProjectBoardPage() {
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Comments
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [postingComment, setPostingComment] = useState(false);
 
   const fetchBoard = useCallback(async () => {
     try {
@@ -77,6 +83,28 @@ export default function ProjectBoardPage() {
     setSelectedTask({ ...task });
     setPanelOpen(true);
     setConfirmDelete(false);
+    setComments([]);
+    fetchComments(task.id);
+  };
+
+  const fetchComments = async (taskId: string) => {
+    setLoadingComments(true);
+    try {
+      const data = await commentService.getAll(slug, taskId);
+      setComments(data);
+    } catch { /* ignore */ }
+    setLoadingComments(false);
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !selectedTask) return;
+    setPostingComment(true);
+    try {
+      await commentService.create(slug, selectedTask.id, { content: newComment });
+      setNewComment("");
+      await fetchComments(selectedTask.id);
+    } catch { /* ignore */ }
+    setPostingComment(false);
   };
 
   const closePanel = () => {
@@ -194,6 +222,11 @@ export default function ProjectBoardPage() {
             </div>
           </>
         )}
+        <div className="ml-auto flex items-center gap-2">
+          <span className="px-3 py-1.5 text-xs font-medium text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10 rounded-lg">Board</span>
+          <button onClick={() => router.push(`/projects/${projectId}/tasks`)}
+            className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-lg">List</button>
+        </div>
       </div>
 
       {/* Board */}
@@ -370,6 +403,54 @@ export default function ProjectBoardPage() {
                   <div className="flex items-center justify-between text-xs text-gray-400">
                     <span>Subtasks</span>
                     <span>{selectedTask.completedSubtaskCount}/{selectedTask.subtaskCount}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Comments */}
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 block">
+                  Comments {comments.length > 0 && `(${comments.length})`}
+                </label>
+
+                {/* Add comment */}
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="text" value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAddComment(); }}
+                    placeholder="Write a comment..."
+                    className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
+                  />
+                  <button onClick={handleAddComment} disabled={postingComment || !newComment.trim()}
+                    className="px-3 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 shrink-0">
+                    {postingComment ? "..." : "Send"}
+                  </button>
+                </div>
+
+                {/* Comment list */}
+                {loadingComments ? (
+                  <div className="flex justify-center py-4">
+                    <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : comments.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-3">No comments yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    {comments.map((comment) => (
+                      <div key={comment.id} className="flex gap-2.5">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-brand-500 shrink-0 mt-0.5">
+                          {comment.author.firstName?.charAt(0)}{comment.author.lastName?.charAt(0)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-gray-900 dark:text-white">{comment.author.firstName} {comment.author.lastName}</span>
+                            <span className="text-[10px] text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5 break-words">{comment.content}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

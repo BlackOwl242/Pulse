@@ -1,26 +1,52 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
 import { roleService } from "@/services/roleService";
-import { WorkspaceMember } from "@/types/roles";
+import { workspaceService } from "@/services/workspaceService";
+import { WorkspaceMember, Role } from "@/types/roles";
 
 export default function MembersPage() {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRoleId, setInviteRoleId] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState("");
+  const [inviteError, setInviteError] = useState("");
   const slug = "pulse-demo";
 
-  const fetchMembers = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await roleService.getMembers(slug);
-      setMembers(data);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
+      const [m, r] = await Promise.all([
+        roleService.getMembers(slug),
+        roleService.getRoles(slug),
+      ]);
+      setMembers(m);
+      setRoles(r);
+      if (r.length > 0 && !inviteRoleId) setInviteRoleId(r.find(role => role.name === "Member")?.id || r[0].id);
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
   }, [slug]);
 
-  useEffect(() => { fetchMembers(); }, [fetchMembers]);
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim() || !inviteRoleId) return;
+    setInviting(true);
+    setInviteError("");
+    setInviteSuccess("");
+    try {
+      await workspaceService.inviteMember(slug, { email: inviteEmail, roleId: inviteRoleId });
+      setInviteSuccess(`Invitation sent to ${inviteEmail}`);
+      setInviteEmail("");
+      setTimeout(() => { setShowInvite(false); setInviteSuccess(""); }, 2000);
+    } catch {
+      setInviteError("Failed to send invitation. Please try again.");
+    }
+    finally { setInviting(false); }
+  };
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto min-h-[calc(100vh-64px)]">
@@ -31,6 +57,11 @@ export default function MembersPage() {
             Manage workspace members and their roles
           </p>
         </div>
+        <button onClick={() => { setShowInvite(true); setInviteError(""); setInviteSuccess(""); }}
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white rounded-lg bg-brand-500 hover:bg-brand-600 transition-colors shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+          Invite Member
+        </button>
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
@@ -81,6 +112,46 @@ export default function MembersPage() {
           </table>
         )}
       </div>
+
+      {/* Invite Modal */}
+      {showInvite && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md mx-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Invite Member</h2>
+              <button onClick={() => setShowInvite(false)} className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
+                <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="colleague@example.com"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
+                <select value={inviteRoleId} onChange={(e) => setInviteRoleId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>{role.name}{role.description ? ` — ${role.description}` : ""}</option>
+                  ))}
+                </select>
+              </div>
+              {inviteSuccess && <p className="text-sm text-green-500 flex items-center gap-1">✓ {inviteSuccess}</p>}
+              {inviteError && <p className="text-sm text-red-500">{inviteError}</p>}
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800">
+              <button onClick={() => setShowInvite(false)} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">Cancel</button>
+              <button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 flex items-center gap-2">
+                {inviting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                Send Invite
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

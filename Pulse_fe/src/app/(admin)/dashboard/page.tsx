@@ -1,14 +1,17 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { projectService, Project } from "@/services/projectService";
+import { taskService } from "@/services/taskService";
 import { roleService } from "@/services/roleService";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { BoardColumn } from "@/types/task";
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const [projects, setProjects] = useState<Project[]>([]);
   const [memberCount, setMemberCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
 
   // TODO: Replace with actual workspace slug from context
   const slug = "pulse-demo";
@@ -22,6 +25,21 @@ export default function DashboardPage() {
         ]);
         setProjects(projs);
         setMemberCount(members.length);
+
+        // Fetch board data for task status distribution (first 5 projects)
+        if (projs.length > 0) {
+          const boards = await Promise.all(
+            projs.slice(0, 5).map((p: Project) =>
+              taskService.getBoardView(slug, p.id).catch(() => [] as BoardColumn[])
+            )
+          );
+          const counts: Record<string, number> = {};
+          boards.flat().forEach((col) => {
+            const name = col.name;
+            counts[name] = (counts[name] || 0) + col.tasks.length;
+          });
+          setStatusCounts(counts);
+        }
       } catch {
         // ignore
       } finally {
@@ -93,6 +111,56 @@ export default function DashboardPage() {
           color="purple"
         />
       </div>
+
+      {/* Charts Row */}
+      {!loading && totalTasks > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Task Status Distribution — CSS Donut */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Task Distribution</h3>
+            <div className="flex items-center gap-6">
+              <DonutChart counts={statusCounts} total={totalTasks} />
+              <div className="space-y-2 flex-1">
+                {STATUS_DISPLAY.map((s) => {
+                  const count = statusCounts[s.key] || 0;
+                  if (count === 0) return null;
+                  const pct = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
+                  return (
+                    <div key={s.key} className="flex items-center gap-2">
+                      <div className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
+                      <span className="text-xs text-gray-600 dark:text-gray-400 flex-1">{s.label}</span>
+                      <span className="text-xs font-medium text-gray-900 dark:text-white">{count}</span>
+                      <span className="text-[10px] text-gray-400 w-8 text-right">{pct}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Workload by Project */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Workload by Project</h3>
+            <div className="space-y-3">
+              {projects.slice(0, 5).map((p) => {
+                const pct = p.taskCount > 0 ? Math.round((p.completedTaskCount / p.taskCount) * 100) : 0;
+                return (
+                  <div key={p.id}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{p.name}</span>
+                      <span className="text-[10px] text-gray-400 shrink-0 ml-2">{p.completedTaskCount}/{p.taskCount} done</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: p.color || '#6366f1' }} />
+                    </div>
+                  </div>
+                );
+              })}
+              {projects.length === 0 && <p className="text-xs text-gray-400 text-center py-4">No projects yet</p>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Projects Summary */}
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
@@ -197,3 +265,40 @@ function MetricCard({
     </div>
   );
 }
+
+const STATUS_DISPLAY = [
+  { key: "Todo",       label: "To Do",       color: "#9ca3af", dot: "bg-gray-400" },
+  { key: "InProgress", label: "In Progress", color: "#3b82f6", dot: "bg-blue-500" },
+  { key: "InReview",   label: "In Review",   color: "#f59e0b", dot: "bg-amber-500" },
+  { key: "Done",       label: "Done",        color: "#22c55e", dot: "bg-green-500" },
+  { key: "Cancelled",  label: "Cancelled",   color: "#ef4444", dot: "bg-red-400" },
+];
+
+function DonutChart({ counts, total }: { counts: Record<string, number>; total: number }) {
+  // Build conic-gradient segments
+  let angle = 0;
+  const segments: string[] = [];
+  STATUS_DISPLAY.forEach((s) => {
+    const count = counts[s.key] || 0;
+    if (count === 0) return;
+    const deg = (count / total) * 360;
+    segments.push(`${s.color} ${angle}deg ${angle + deg}deg`);
+    angle += deg;
+  });
+  const gradient = segments.length > 0
+    ? `conic-gradient(${segments.join(", ")})`
+    : "conic-gradient(#e5e7eb 0deg 360deg)";
+
+  return (
+    <div className="relative w-28 h-28 shrink-0">
+      <div className="w-full h-full rounded-full" style={{ background: gradient }} />
+      <div className="absolute inset-3 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg font-bold text-gray-900 dark:text-white">{total}</p>
+          <p className="text-[10px] text-gray-400">tasks</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
