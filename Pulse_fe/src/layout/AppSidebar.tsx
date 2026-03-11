@@ -47,6 +47,7 @@ const navItems: NavItem[] = [
     ),
     subItems: [
       { name: "Roles & Permissions", path: "/settings/roles" },
+      { name: "Teams", path: "/settings/teams" },
     ],
   },
 ];
@@ -335,38 +336,6 @@ const AppSidebar: React.FC = () => {
                 )}
               </h2>
               {renderMenuItems(navItems, "main")}
-            </div>
-            <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-5 text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "xl:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Support"
-                ) : (
-                  <HorizontaLDots />
-                )}
-              </h2>
-              {renderMenuItems(supportItems, "support")}
-            </div>
-            <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-5 text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "xl:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Others"
-                ) : (
-                  <HorizontaLDots />
-                )}
-              </h2>
-              {renderMenuItems(othersItems, "others")}
             </div>
           </div>
         </nav>
