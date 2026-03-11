@@ -95,6 +95,25 @@ const navItems: NavItem[] = [
     path: "/ai",
   },
   {
+    icon: (
+      <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
+        <rect x="3" y="4" width="18" height="16" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M3 10h18M8 4v3M16 4v3M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    name: "Planner",
+    path: "/planner",
+  },
+  {
+    icon: (
+      <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
+        <path d="M9 19V13a1 1 0 011-1h4a1 1 0 011 1v6M5 19V9a1 1 0 011-1h2a1 1 0 011 1v10M17 19V5a1 1 0 011-1h2a1 1 0 011 1v14M3 19h18" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    name: "Reports",
+    path: "/reports",
+  },
+  {
     name: "Settings",
     icon: (
       <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
