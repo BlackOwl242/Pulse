@@ -6,29 +6,45 @@ import { useAuthStore } from "@/stores/useAuthStore";
 
 /**
  * AuthGuard wraps protected pages.
- * It checks the Zustand auth state on mount:
- *  - If not authenticated → clear stale cookie + redirect to /signin
- *  - If authenticated → render children
+ * It waits for Zustand hydration from localStorage before checking auth.
+ * Without waiting, the initial state (isAuthenticated=false) would cause
+ * an immediate redirect on every page load / navigation.
  */
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const { isAuthenticated, accessToken, logout } = useAuthStore();
+    const [hydrated, setHydrated] = useState(false);
     const [checked, setChecked] = useState(false);
 
+    // Wait for Zustand persist hydration to complete
     useEffect(() => {
-        // Zustand persisted state is the source of truth
+        // Zustand persist middleware exposes onFinishHydration
+        const unsub = useAuthStore.persist.onFinishHydration(() => {
+            setHydrated(true);
+        });
+
+        // If already hydrated (e.g., fast subsequent renders)
+        if (useAuthStore.persist.hasHydrated()) {
+            setHydrated(true);
+        }
+
+        return unsub;
+    }, []);
+
+    // Once hydrated, check auth state
+    useEffect(() => {
+        if (!hydrated) return;
+
         if (!isAuthenticated || !accessToken) {
-            // Clear any stale cookie so middleware won't redirect again
             logout();
             router.replace("/signin");
             return;
         }
 
         setChecked(true);
-    }, [isAuthenticated, accessToken, logout, router]);
+    }, [hydrated, isAuthenticated, accessToken, logout, router]);
 
     if (!checked) {
-        // Show a minimal loading state while checking auth
         return (
             <div className="flex items-center justify-center min-h-screen bg-white dark:bg-gray-900">
                 <div className="flex flex-col items-center gap-3">

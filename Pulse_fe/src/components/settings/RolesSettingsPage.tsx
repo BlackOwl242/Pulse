@@ -155,7 +155,7 @@ export default function RolesSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl min-h-[calc(100vh-64px)]">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>

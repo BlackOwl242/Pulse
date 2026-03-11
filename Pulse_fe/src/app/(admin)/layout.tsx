@@ -5,7 +5,6 @@ import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
 import AuthGuard from "@/components/auth/AuthGuard";
-import { usePathname } from "next/navigation";
 
 export default function AdminLayout({
   children,
@@ -13,23 +12,6 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
-  const pathname = usePathname();
-
-  // Route-specific styles for the main content container
-  const getRouteSpecificStyles = () => {
-    switch (pathname) {
-      case "/text-generator":
-        return "";
-      case "/code-generator":
-        return "";
-      case "/image-generator":
-        return "";
-      case "/video-generator":
-        return "";
-      default:
-        return "p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6";
-    }
-  };
 
   // Dynamic class for main content margin based on sidebar state
   const mainContentMargin = isMobileOpen
@@ -46,12 +28,24 @@ export default function AdminLayout({
         <Backdrop />
         {/* Main Content Area */}
         <div
-          className={`flex-1 transition-all  duration-300 ease-in-out ${mainContentMargin}`}
+          className={`flex-1 transition-all duration-300 ease-in-out ${mainContentMargin}`}
         >
-          {/* Header */}
-          <AppHeader />
+          {/* Header — fixed at viewport top, never scrolls */}
+          <div className={`fixed top-0 right-0 z-[99999] transition-all duration-300 ease-in-out ${
+            isMobileOpen
+              ? "left-0"
+              : isExpanded || isHovered
+              ? "xl:left-[290px] left-0"
+              : "xl:left-[90px] left-0"
+          }`}>
+            <AppHeader />
+          </div>
+          {/* Spacer to offset fixed header height */}
+          <div className="h-16 xl:h-[72px]" />
           {/* Page Content */}
-          <div className={getRouteSpecificStyles()}>{children}</div>
+          <div className="mx-auto max-w-(--breakpoint-2xl) w-full">
+            {children}
+          </div>
         </div>
       </div>
     </AuthGuard>

@@ -1,90 +1,199 @@
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-    title: "Dashboard | Pulse",
-    description: "Pulse workspace dashboard",
-};
+"use client";
+import React, { useEffect, useState } from "react";
+import { projectService, Project } from "@/services/projectService";
+import { roleService } from "@/services/roleService";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 export default function DashboardPage() {
-    return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">
-                    Dashboard
-                </h1>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Welcome back! Here&apos;s an overview of your workspace.
-                </p>
-            </div>
+  const user = useAuthStore((s) => s.user);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [memberCount, setMemberCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <MetricCard title="Total Projects" value="—" color="brand" />
-                <MetricCard title="Active Tasks" value="—" color="blue" />
-                <MetricCard title="Team Members" value="—" color="green" />
-                <MetricCard title="Completed" value="—" color="purple" />
-            </div>
+  // TODO: Replace with actual workspace slug from context
+  const slug = "pulse-demo";
 
-            {/* Placeholder */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 dark:border-gray-800 dark:bg-white/[0.03]">
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-brand-50 dark:bg-brand-500/10">
-                        <svg
-                            className="w-8 h-8 text-brand-500"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
-                            />
-                        </svg>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-                        Dashboard coming soon
-                    </h3>
-                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm">
-                        Charts, metrics, and workspace overview will be displayed here.
-                        Navigate to Projects to start managing your work.
-                    </p>
-                </div>
-            </div>
+  useEffect(() => {
+    async function load() {
+      try {
+        const [projs, members] = await Promise.all([
+          projectService.getAll(slug).catch(() => []),
+          roleService.getMembers(slug).catch(() => []),
+        ]);
+        setProjects(projs);
+        setMemberCount(members.length);
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [slug]);
+
+  const totalTasks = projects.reduce((s, p) => s + p.taskCount, 0);
+  const completedTasks = projects.reduce((s, p) => s + p.completedTaskCount, 0);
+  const activeTasks = totalTasks - completedTasks;
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const firstName = user?.firstName || "User";
+
+  return (
+    <div className="space-y-6 p-4 sm:p-6 min-h-[calc(100vh-64px)]">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Welcome back, {firstName} 👋
+        </h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Here&apos;s an overview of your workspace activity
+        </p>
+      </div>
+
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          title="Total Projects"
+          value={loading ? "—" : String(projects.length)}
+          icon={
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+            </svg>
+          }
+          color="brand"
+        />
+        <MetricCard
+          title="Active Tasks"
+          value={loading ? "—" : String(activeTasks)}
+          icon={
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+            </svg>
+          }
+          color="blue"
+        />
+        <MetricCard
+          title="Team Members"
+          value={loading ? "—" : String(memberCount)}
+          icon={
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+            </svg>
+          }
+          color="green"
+        />
+        <MetricCard
+          title="Completed"
+          value={loading ? "—" : `${completedTasks} (${completionRate}%)`}
+          icon={
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          color="purple"
+        />
+      </div>
+
+      {/* Projects Summary */}
+      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Projects</h2>
+          <a href="/projects" className="text-sm text-brand-500 hover:text-brand-600 font-medium">
+            View all →
+          </a>
         </div>
-    );
+        {loading ? (
+          <div className="p-8 flex justify-center">
+            <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="p-8 text-center">
+            <div className="flex items-center justify-center w-14 h-14 mx-auto mb-3 rounded-full bg-brand-50 dark:bg-brand-500/10">
+              <svg className="w-7 h-7 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">No projects yet</p>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+              Create your first project to get started
+            </p>
+            <a href="/projects" className="mt-3 inline-block text-sm text-brand-500 hover:text-brand-600 font-medium">
+              Go to Projects →
+            </a>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {projects.slice(0, 5).map((project) => {
+              const progress = project.taskCount > 0
+                ? Math.round((project.completedTaskCount / project.taskCount) * 100) : 0;
+              return (
+                <a
+                  key={project.id}
+                  href={`/projects/${project.id}`}
+                  className="flex items-center gap-4 px-6 py-3.5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                >
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
+                    style={{ backgroundColor: project.color || "#6366f1" }}
+                  >
+                    {project.icon || project.name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {project.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {project.completedTaskCount}/{project.taskCount} tasks completed
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-24 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${progress}%`,
+                          backgroundColor: project.color || "#6366f1",
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-8 text-right">
+                      {progress}%
+                    </span>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function MetricCard({
-    title,
-    value,
-    color,
+  title, value, icon, color,
 }: {
-    title: string;
-    value: string;
-    color: "brand" | "blue" | "green" | "purple";
+  title: string; value: string; icon: React.ReactNode;
+  color: "brand" | "blue" | "green" | "purple";
 }) {
-    const colorMap = {
-        brand: "bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400",
-        blue: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
-        green: "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400",
-        purple: "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400",
-    };
+  const colorMap = {
+    brand: "bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400",
+    blue: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
+    green: "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400",
+    purple: "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400",
+  };
 
-    return (
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-            <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colorMap[color]}`}>
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                    </svg>
-                </div>
-                <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-                    <p className="text-xl font-semibold text-gray-800 dark:text-white/90">{value}</p>
-                </div>
-            </div>
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colorMap[color]}`}>
+          {icon}
         </div>
-    );
+        <div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+          <p className="text-xl font-semibold text-gray-800 dark:text-white/90">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
 }
