@@ -1,18 +1,22 @@
 import { useState, useEffect } from "react";
-
-interface ChatItem {
-  id: string;
-  title: string;
-}
+import { AIConversation } from "@/services/aiService";
 
 interface AiSidebarHistoryProps {
   isSidebarOpen: boolean;
   onCloseSidebar: () => void;
+  conversations: AIConversation[];
+  activeConv: string | null;
+  openConversation: (id: string) => void;
+  startNew: () => void;
 }
 
 export default function AiSidebarHistory({
   isSidebarOpen,
   onCloseSidebar,
+  conversations,
+  activeConv,
+  openConversation,
+  startNew,
 }: AiSidebarHistoryProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMore, setShowMore] = useState(false);
@@ -35,25 +39,21 @@ export default function AiSidebarHistory({
     };
   }, [openDropdown]);
 
-  const todayChats: ChatItem[] = [
-    { id: "1", title: "Write a follow-up email to a client" },
-    { id: "2", title: "Generate responsive login form layout" },
-    { id: "3", title: "Create a warning state modal" },
-    { id: "4", title: "Suggest color palette for dark theme" },
-  ];
+  const filteredConversations = conversations.filter(c => 
+    (c.lastMessage || "New conversation").toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const yesterdayChats: ChatItem[] = [
-    { id: "5", title: "Improve login page accessibility" },
-    { id: "6", title: "Create a warning state modal with animation" },
-    { id: "7", title: "Add password visibility toggle" },
-    { id: "8", title: "Write validation logic for login form..." },
-    { id: "9", title: "Fix mobile responsiveness of login UI..." },
-  ];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
 
-  const lastWeekChats: ChatItem[] = [
-    { id: "10", title: "Improve login page accessi..." },
-    { id: "11", title: "Improve login page accessi..." },
-  ];
+  const todayChats = filteredConversations.filter(c => new Date(c.createdAt) >= today);
+  const yesterdayChats = filteredConversations.filter(c => {
+    const d = new Date(c.createdAt);
+    return d >= yesterday && d < today;
+  });
+  const lastWeekChats = filteredConversations.filter(c => new Date(c.createdAt) < yesterday);
 
   const handleDropdownToggle = (itemId: string) => {
     setOpenDropdown(openDropdown === itemId ? null : itemId);
@@ -120,7 +120,7 @@ export default function AiSidebarHistory({
         }`}
       >
         {/* New Chat Button */}
-        <button className="bg-brand-500 hover:bg-brand-600 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-white transition">
+        <button onClick={startNew} className="bg-brand-500 hover:bg-brand-600 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-white transition">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
@@ -173,6 +173,7 @@ export default function AiSidebarHistory({
         {/* Chat Items */}
         <div className="custom-scrollbar mt-6 h-full flex-1 space-y-3 overflow-y-auto text-sm">
           {/* Today Section */}
+          {todayChats.length > 0 && (
           <div>
             <p className="mb-3 pl-3 text-xs text-gray-400 uppercase">Today</p>
             <ul className="space-y-1">
@@ -181,6 +182,8 @@ export default function AiSidebarHistory({
                   key={chat.id}
                   chat={chat}
                   isOpen={openDropdown === chat.id}
+                  isActive={activeConv === chat.id}
+                  onClick={() => { openConversation(chat.id); onCloseSidebar(); }}
                   onToggleDropdown={() => handleDropdownToggle(chat.id)}
                   onRename={() => handleRename(chat.id)}
                   onDelete={() => handleDelete(chat.id)}
@@ -188,9 +191,11 @@ export default function AiSidebarHistory({
               ))}
             </ul>
           </div>
+          )}
 
           {/* Yesterday Section */}
-          <div className="relative">
+          {yesterdayChats.length > 0 && (
+          <div className="relative pt-2">
             <p className="mb-3 pl-3 text-xs text-gray-400 uppercase">
               Yesterday
             </p>
@@ -200,23 +205,26 @@ export default function AiSidebarHistory({
                   key={chat.id}
                   chat={chat}
                   isOpen={openDropdown === chat.id}
+                  isActive={activeConv === chat.id}
+                  onClick={() => { openConversation(chat.id); onCloseSidebar(); }}
                   onToggleDropdown={() => handleDropdownToggle(chat.id)}
                   onRename={() => handleRename(chat.id)}
                   onDelete={() => handleDelete(chat.id)}
                 />
               ))}
             </ul>
-            {!showMore && (
+            {lastWeekChats.length > 0 && !showMore && (
               <div className="pointer-events-none absolute bottom-0 left-0 z-10 h-8 w-full bg-gradient-to-t from-white to-transparent dark:from-gray-900" />
             )}
           </div>
+          )}
 
           {/* Show More Content */}
-          {showMore && (
-            <div className="pl-3">
+          {showMore && lastWeekChats.length > 0 && (
+            <div className="pt-2">
               <div className="relative">
-                <p className="mb-3 text-xs text-gray-400 uppercase">
-                  Last Week
+                <p className="mb-3 pl-3 text-xs text-gray-400 uppercase">
+                  Previous
                 </p>
                 <ul className="space-y-1">
                   {lastWeekChats.map((chat) => (
@@ -224,6 +232,8 @@ export default function AiSidebarHistory({
                       key={chat.id}
                       chat={chat}
                       isOpen={openDropdown === chat.id}
+                      isActive={activeConv === chat.id}
+                      onClick={() => { openConversation(chat.id); onCloseSidebar(); }}
                       onToggleDropdown={() => handleDropdownToggle(chat.id)}
                       onRename={() => handleRename(chat.id)}
                       onDelete={() => handleDelete(chat.id)}
@@ -235,12 +245,13 @@ export default function AiSidebarHistory({
           )}
 
           {/* Show more toggle */}
+          {lastWeekChats.length > 0 && (
           <div className="mt-4 pl-3">
             <button
               onClick={() => setShowMore(!showMore)}
               className="text-primary-500 flex w-full items-center justify-between text-xs font-medium text-gray-400"
             >
-              <span>{showMore ? "Show less..." : "Show more..."}</span>
+              <span>{showMore ? "Show less" : "Show more..."}</span>
               <svg
                 className={`ml-2 transition-transform ${
                   showMore ? "rotate-180" : ""
@@ -261,6 +272,7 @@ export default function AiSidebarHistory({
               </svg>
             </button>
           </div>
+          )}
         </div>
       </aside>
     </div>
@@ -269,9 +281,11 @@ export default function AiSidebarHistory({
 
 // Chat Item Component
 interface ChatItemProps {
-  chat: ChatItem;
+  chat: AIConversation;
   isOpen: boolean;
-  onToggleDropdown: () => void;
+  isActive: boolean;
+  onClick: () => void;
+  onToggleDropdown: (e: React.MouseEvent) => void;
   onRename: () => void;
   onDelete: () => void;
 }
@@ -279,23 +293,24 @@ interface ChatItemProps {
 function ChatItem({
   chat,
   isOpen,
+  isActive,
+  onClick,
   onToggleDropdown,
   onRename,
   onDelete,
 }: ChatItemProps) {
   return (
-    <li className="group relative rounded-full px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-950">
-      <div className="flex cursor-pointer items-center justify-between">
-        <a
-          href="#"
-          className="block truncate text-sm text-gray-700 dark:text-gray-400"
+    <li className={`group relative rounded-full px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-950 transition-colors ${isActive ? "bg-brand-50/50 dark:bg-brand-500/10" : ""}`}>
+      <div className="flex cursor-pointer items-center justify-between" onClick={onClick}>
+        <button
+          className={`block w-[85%] text-left truncate text-sm transition-colors ${isActive ? "text-brand-600 dark:text-brand-400 font-medium" : "text-gray-700 dark:text-gray-400"}`}
         >
-          {chat.title}
-        </a>
+          {chat.lastMessage || "New conversation"}
+        </button>
 
         {/* 3-dot menu button */}
         <button
-          onClick={onToggleDropdown}
+          onClick={(e) => { e.stopPropagation(); onToggleDropdown(e); }}
           className="invisible ml-2 rounded-full p-1 text-gray-700 group-hover:visible hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400"
         >
           <svg

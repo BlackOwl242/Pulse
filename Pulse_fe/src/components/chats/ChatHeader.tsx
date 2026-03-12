@@ -3,9 +3,11 @@ import ChatHeaderTitle from "./ChatHeaderTitle";
 
 interface ChatHeaderProps {
   onToggle: () => void;
+  search: string;
+  setSearch: (s: string) => void;
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggle }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggle, search, setSearch }) => {
   return (
     <div className="sticky px-4 pt-4 pb-4 sm:px-5 sm:pt-5 xl:pb-0">
       <ChatHeaderTitle />
@@ -52,6 +54,8 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggle }) => {
             <input
               type="text"
               placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent py-2.5 pl-[42px] pr-3.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
             />
           </form>

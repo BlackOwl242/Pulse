@@ -22,9 +22,11 @@ export default function OKRPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [form, setForm] = useState<CreateObjectiveRequest>({ title: "", period: "" });
+  const [form, setForm] = useState<CreateObjectiveRequest>({ title: "", period: "", status: 1 });
   const [krForm, setKrForm] = useState<{ objectiveId: string; title: string; targetValue: number; unit: string } | null>(null);
   const [checkInForm, setCheckInForm] = useState<{ krId: string; newValue: number; note: string; confidence: number } | null>(null);
+  const [deletingObjId, setDeletingObjId] = useState<string | null>(null);
+  const [deletingKrId, setDeletingKrId] = useState<string | null>(null);
   const slug = "pulse-demo";
 
   const fetch = useCallback(async () => {
@@ -43,7 +45,7 @@ export default function OKRPage() {
     try {
       await okrService.create(slug, form);
       setShowCreate(false);
-      setForm({ title: "", period: "" });
+      setForm({ title: "", period: "", status: 1 });
       await fetch();
     } catch {}
     setCreating(false);
@@ -65,6 +67,43 @@ export default function OKRPage() {
       setCheckInForm(null);
       await fetch();
     } catch {}
+  };
+
+  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>, objId: string) => {
+    e.stopPropagation();
+    const newStatus = Number(e.target.value);
+    
+    // Optimistic UI update
+    setObjectives(prev => prev.map(o => o.id === objId ? { ...o, status: newStatus } : o));
+    
+    try {
+      await okrService.updateObjective(slug, objId, { status: newStatus });
+    } catch {
+      // Revert if failed (by re-fetching)
+      await fetch();
+    }
+  };
+
+  const handleDeleteObj = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this Objective and all its Key Results?")) return;
+    setDeletingObjId(id);
+    try {
+      await okrService.deleteObjective(slug, id);
+      await fetch();
+    } catch {}
+    setDeletingObjId(null);
+  };
+
+  const handleDeleteKR = async (e: React.MouseEvent, krId: string) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this Key Result?")) return;
+    setDeletingKrId(krId);
+    try {
+      await okrService.deleteKeyResult(slug, krId);
+      await fetch();
+    } catch {}
+    setDeletingKrId(null);
   };
 
   return (
@@ -105,7 +144,24 @@ export default function OKRPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold text-gray-900 dark:text-white truncate">{obj.title}</h3>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${status.cls}`}>{status.label}</span>
+                        
+                        {/* Inline Status Edit Dropdown */}
+                        <div className="relative isolate" onClick={e => e.stopPropagation()}>
+                          <select
+                            value={obj.status}
+                            onChange={(e) => handleStatusChange(e, obj.id)}
+                            className={`text-xs px-2 py-0.5 pr-6 rounded-full font-medium appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/30 ${status.cls}`}
+                            title="Change status"
+                          >
+                            {Object.entries(STATUS_MAP).map(([key, val]) => (
+                              <option key={key} value={key} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">{val.label}</option>
+                            ))}
+                          </select>
+                          <div className="absolute inset-y-0 right-1.5 flex items-center pointer-events-none">
+                            <svg className="w-3 h-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                          </div>
+                        </div>
+
                         {obj.period && <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">{obj.period}</span>}
                       </div>
                       <div className="flex items-center gap-3">
@@ -116,6 +172,17 @@ export default function OKRPage() {
                         <span className="text-xs text-gray-400">{obj.keyResults.length} KR{obj.keyResults.length !== 1 ? "s" : ""}</span>
                       </div>
                     </div>
+                    {/* Delete Objective button */}
+                    <button onClick={(e) => handleDeleteObj(e, obj.id)}
+                            disabled={deletingObjId === obj.id}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                            title="Delete objective">
+                       {deletingObjId === obj.id ? (
+                           <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                       ) : (
+                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                       )}
+                    </button>
                   </div>
                 </div>
 
@@ -135,10 +202,22 @@ export default function OKRPage() {
                               <span className="text-xs text-gray-400">{kr.currentValue}/{kr.targetValue} {kr.unit || ""}</span>
                             </div>
                           </div>
-                          <button onClick={(e) => { e.stopPropagation(); setCheckInForm({ krId: kr.id, newValue: kr.currentValue, note: "", confidence: 0 }); }}
-                            className="px-2.5 py-1 text-xs font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-lg shrink-0">
-                            Check-in
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); setCheckInForm({ krId: kr.id, newValue: kr.currentValue, note: "", confidence: 0 }); }}
+                              className="px-2.5 py-1 text-xs font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-lg shrink-0">
+                              Check-in
+                            </button>
+                            <button onClick={(e) => handleDeleteKR(e, kr.id)}
+                                    disabled={deletingKrId === kr.id}
+                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors shrink-0"
+                                    title="Delete Key Result">
+                               {deletingKrId === kr.id ? (
+                                   <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                               ) : (
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                               )}
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -164,7 +243,21 @@ export default function OKRPage() {
             </div>
             <div className="px-6 py-4 space-y-4">
               <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label><input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Increase user engagement" className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Period</label><input type="text" value={form.period || ""} onChange={(e) => setForm({ ...form, period: e.target.value })} placeholder="e.g. Q1-2026" className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Period</label><input type="text" value={form.period || ""} onChange={(e) => setForm({ ...form, period: e.target.value })} placeholder="e.g. Q1-2026" className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" /></div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: Number(e.target.value) })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  >
+                    {Object.entries(STATUS_MAP).map(([key, val]) => (
+                      <option key={key} value={key}>{val.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label><textarea value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Optional details..." className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-none" /></div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800">

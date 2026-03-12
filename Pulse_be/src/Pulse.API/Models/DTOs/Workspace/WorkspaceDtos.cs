@@ -32,3 +32,9 @@ public class InviteMemberRequest
     public string Email { get; set; } = string.Empty;
     public Guid RoleId { get; set; }
 }
+
+public class AddMemberByEmailRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public Guid RoleId { get; set; }
+}

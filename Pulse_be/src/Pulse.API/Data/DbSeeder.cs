@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pulse.API.Models.Entities.Identity;
 using Pulse.API.Models.Entities.Organization;
 using Pulse.API.Models.Enums;
+using Pulse.API.Models.Entities.TaskManagement;
 
 namespace Pulse.API.Data;
 
@@ -123,7 +124,7 @@ public static class DbSeeder
                 Description = "Implement login, register, forgot password",
                 Status = TaskItemStatus.Done,
                 Priority = TaskPriority.High,
-                AssigneeId = staffUser.Id,
+                Assignees = new List<TaskAssignee> { new TaskAssignee { UserId = staffUser.Id } },
                 CreatedById = managerUser.Id,
                 Position = 0,
                 CompletedAt = DateTime.UtcNow.AddDays(-1),
@@ -135,7 +136,7 @@ public static class DbSeeder
                 Description = "Create the main dashboard UI with widgets",
                 Status = TaskItemStatus.InProgress,
                 Priority = TaskPriority.High,
-                AssigneeId = staffUser.Id,
+                Assignees = new List<TaskAssignee> { new TaskAssignee { UserId = staffUser.Id } },
                 CreatedById = managerUser.Id,
                 Position = 0,
             },
@@ -146,7 +147,7 @@ public static class DbSeeder
                 Description = "Drag & drop task cards between columns",
                 Status = TaskItemStatus.InProgress,
                 Priority = TaskPriority.Medium,
-                AssigneeId = staffUser.Id,
+                Assignees = new List<TaskAssignee> { new TaskAssignee { UserId = staffUser.Id } },
                 CreatedById = managerUser.Id,
                 Position = 1,
             },
@@ -157,7 +158,6 @@ public static class DbSeeder
                 Description = "Real-time notifications via SignalR",
                 Status = TaskItemStatus.Todo,
                 Priority = TaskPriority.Medium,
-                AssigneeId = null,
                 CreatedById = managerUser.Id,
                 Position = 0,
             },
@@ -168,7 +168,6 @@ public static class DbSeeder
                 Description = "Sync events with Google Calendar API",
                 Status = TaskItemStatus.Todo,
                 Priority = TaskPriority.Low,
-                AssigneeId = null,
                 CreatedById = adminUser.Id,
                 Position = 1,
             }

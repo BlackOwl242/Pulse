@@ -168,12 +168,30 @@ export default function TaskListPage() {
                       {priority.label && <span className={`text-xs px-2 py-1 rounded font-medium ${priority.cls}`}>{priority.label}</span>}
                     </td>
                     <td className="px-5 py-3.5">
-                      {task.assignee ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-brand-500 shrink-0">
-                            {task.assignee.firstName?.charAt(0)}{task.assignee.lastName?.charAt(0)}
+                      {task.assignees && task.assignees.length > 0 ? (
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                          <div className="flex -space-x-1.5">
+                            {task.assignees.slice(0, 3).map((a) => (
+                              <div key={a.id} className="w-6 h-6 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center text-[10px] font-bold text-white bg-brand-500 shrink-0" title={`${a.firstName} ${a.lastName}`}>
+                                {a.avatarUrl ? (
+                                  <img src={a.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                                ) : (
+                                  `${a.firstName?.charAt(0)}${a.lastName?.charAt(0)}`
+                                )}
+                              </div>
+                            ))}
+                            {task.assignees.length > 3 && (
+                              <div className="w-6 h-6 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center text-[10px] font-bold text-gray-700 bg-gray-100 shrink-0" title={`+${task.assignees.length - 3} more`}>
+                                +{task.assignees.length - 3}
+                              </div>
+                            )}
                           </div>
-                          <span className="text-xs text-gray-600 dark:text-gray-400">{task.assignee.firstName} {task.assignee.lastName}</span>
+                          {task.assignees.length === 1 && (
+                            <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{task.assignees[0].firstName} {task.assignees[0].lastName}</span>
+                          )}
+                          {task.assignees.length > 1 && (
+                            <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{task.assignees.length} assignees</span>
+                          )}
                         </div>
                       ) : (
                         <span className="text-xs text-gray-400">—</span>

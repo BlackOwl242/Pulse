@@ -63,9 +63,9 @@ public class OKRController : ControllerBase
             Title = req.Title,
             Description = req.Description,
             Period = req.Period,
-            StartDate = req.StartDate,
-            EndDate = req.EndDate,
-            Status = OKRStatus.Draft
+            StartDate = req.StartDate.HasValue ? DateTime.SpecifyKind(req.StartDate.Value, DateTimeKind.Utc) : null,
+            EndDate = req.EndDate.HasValue ? DateTime.SpecifyKind(req.EndDate.Value, DateTimeKind.Utc) : null,
+            Status = req.Status ?? OKRStatus.Active
         };
         _db.Objectives.Add(objective);
         await _db.SaveChangesAsync();
@@ -124,6 +124,66 @@ public class OKRController : ControllerBase
         await _db.SaveChangesAsync();
         return Ok(new { kr.CurrentValue, kr.Progress, ObjectiveProgress = objective?.Progress });
     }
+
+    [HttpDelete("{objectiveId}")]
+    public async Task<IActionResult> DeleteObjective(string workspaceSlug, Guid objectiveId)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace == null) return NotFound();
+
+        var objective = await _db.Objectives.Include(o => o.KeyResults).FirstOrDefaultAsync(o => o.Id == objectiveId && o.WorkspaceId == workspace.Id);
+        if (objective == null) return NotFound();
+
+        _db.KeyResults.RemoveRange(objective.KeyResults);
+        _db.Objectives.Remove(objective);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPut("{objectiveId}")]
+    public async Task<IActionResult> UpdateObjective(string workspaceSlug, Guid objectiveId, [FromBody] UpdateObjectiveRequest req)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace == null) return NotFound();
+
+        var objective = await _db.Objectives.FirstOrDefaultAsync(o => o.Id == objectiveId && o.WorkspaceId == workspace.Id);
+        if (objective == null) return NotFound();
+
+        if (req.Title != null) objective.Title = req.Title;
+        if (req.Description != null) objective.Description = req.Description;
+        if (req.Period != null) objective.Period = req.Period;
+        if (req.Status.HasValue) objective.Status = req.Status.Value;
+        if (req.StartDate.HasValue) objective.StartDate = DateTime.SpecifyKind(req.StartDate.Value, DateTimeKind.Utc);
+        if (req.EndDate.HasValue) objective.EndDate = DateTime.SpecifyKind(req.EndDate.Value, DateTimeKind.Utc);
+
+        await _db.SaveChangesAsync();
+        return Ok();
+    }
+
+    [HttpDelete("key-results/{krId}")]
+    public async Task<IActionResult> DeleteKeyResult(string workspaceSlug, Guid krId)
+    {
+        var kr = await _db.KeyResults.FindAsync(krId);
+        if (kr == null) return NotFound();
+
+        var objectiveId = kr.ObjectiveId;
+        _db.KeyResults.Remove(kr);
+
+        // Recompute objective progress
+        var objective = await _db.Objectives.Include(o => o.KeyResults).FirstOrDefaultAsync(o => o.Id == objectiveId);
+        if (objective != null && objective.KeyResults.Count > 1) // > 1 because kr is still in the list conceptually or we check after save but we can compute excluding this kr
+        {
+            var otherKrs = objective.KeyResults.Where(k => k.Id != krId).ToList();
+            objective.Progress = otherKrs.Any() ? Math.Round(otherKrs.Average(k => k.Progress), 1) : 0;
+        }
+        else if (objective != null)
+        {
+            objective.Progress = 0;
+        }
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
 }
 
 public class CreateObjectiveRequest
@@ -133,6 +193,7 @@ public class CreateObjectiveRequest
     public string? Period { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
+    public OKRStatus? Status { get; set; }
 }
 
 public class CreateKeyResultRequest
@@ -149,4 +210,14 @@ public class CheckInRequest
     public decimal NewValue { get; set; }
     public string? Note { get; set; }
     public OKRConfidence Confidence { get; set; } = OKRConfidence.OnTrack;
+}
+
+public class UpdateObjectiveRequest
+{
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+    public string? Period { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public OKRStatus? Status { get; set; }
 }

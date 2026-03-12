@@ -39,7 +39,7 @@ public class TasksController : ControllerBase
 
         if (status.HasValue) query = query.Where(t => t.Status == status.Value);
         if (priority.HasValue) query = query.Where(t => t.Priority == priority.Value);
-        if (assigneeId.HasValue) query = query.Where(t => t.AssigneeId == assigneeId.Value);
+        if (assigneeId.HasValue) query = query.Where(t => t.Assignees.Any(a => a.UserId == assigneeId.Value));
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(t => EF.Functions.ILike(t.Title, $"%{search}%"));
 
@@ -63,6 +63,7 @@ public class TasksController : ControllerBase
         foreach (var status in statuses)
         {
             var tasks = await _db.Tasks
+                .Include(t => t.Assignees).ThenInclude(a => a.User)
                 .Where(t => t.ProjectId == projectId && t.ParentTaskId == null && t.Status == status)
                 .OrderBy(t => t.Position)
                 .Select(t => MapToDto(t))
@@ -86,7 +87,7 @@ public class TasksController : ControllerBase
     public async Task<ActionResult<TaskDto>> GetById(string workspaceSlug, Guid taskId)
     {
         var task = await _db.Tasks
-            .Include(t => t.Assignee)
+            .Include(t => t.Assignees).ThenInclude(a => a.User)
             .Include(t => t.LabelAssignments).ThenInclude(la => la.Label)
             .Include(t => t.Subtasks)
             .FirstOrDefaultAsync(t => t.Id == taskId);
@@ -114,13 +115,20 @@ public class TasksController : ControllerBase
             Title = request.Title,
             Description = request.Description,
             Priority = request.Priority,
-            AssigneeId = request.AssigneeId,
-            Deadline = request.Deadline,
-            StartDate = request.StartDate,
+            Deadline = request.Deadline.HasValue ? DateTime.SpecifyKind(request.Deadline.Value, DateTimeKind.Utc) : null,
+            StartDate = request.StartDate.HasValue ? DateTime.SpecifyKind(request.StartDate.Value, DateTimeKind.Utc) : null,
             EstimatedMinutes = request.EstimatedMinutes,
             Position = maxPosition + 1,
             CreatedById = userId,
         };
+
+        if (request.AssigneeIds != null && request.AssigneeIds.Any())
+        {
+            foreach (var aId in request.AssigneeIds)
+            {
+                task.Assignees.Add(new TaskAssignee { TaskId = task.Id, UserId = aId });
+            }
+        }
 
         _db.Tasks.Add(task);
         await _db.SaveChangesAsync();
@@ -142,9 +150,20 @@ public class TasksController : ControllerBase
         if (request.Title != null) task.Title = request.Title;
         if (request.Description != null) task.Description = request.Description;
         if (request.Priority.HasValue) task.Priority = request.Priority.Value;
-        if (request.AssigneeId.HasValue) task.AssigneeId = request.AssigneeId;
-        if (request.Deadline.HasValue) task.Deadline = request.Deadline;
-        if (request.StartDate.HasValue) task.StartDate = request.StartDate;
+        
+        // Update assignees if provided in the payload (non-null array)
+        if (request.AssigneeIds != null)
+        {
+            task.Assignees.Clear();
+            foreach (var aId in request.AssigneeIds)
+            {
+                task.Assignees.Add(new TaskAssignee { TaskId = task.Id, UserId = aId });
+            }
+        }
+
+        task.Deadline = request.Deadline.HasValue ? DateTime.SpecifyKind(request.Deadline.Value, DateTimeKind.Utc) : null;
+        task.StartDate = request.StartDate.HasValue ? DateTime.SpecifyKind(request.StartDate.Value, DateTimeKind.Utc) : null;
+        
         if (request.EstimatedMinutes.HasValue) task.EstimatedMinutes = request.EstimatedMinutes;
         if (request.Position.HasValue) task.Position = request.Position.Value;
 
@@ -199,13 +218,13 @@ public class TasksController : ControllerBase
         Description = t.Description,
         Status = t.Status,
         Priority = t.Priority,
-        Assignee = t.Assignee != null ? new AssigneeDto
+        Assignees = t.Assignees?.Select(a => new AssigneeDto
         {
-            Id = t.Assignee.Id,
-            FirstName = t.Assignee.FirstName,
-            LastName = t.Assignee.LastName,
-            AvatarUrl = t.Assignee.AvatarUrl
-        } : null,
+            Id = a.User.Id,
+            FirstName = a.User.FirstName,
+            LastName = a.User.LastName,
+            AvatarUrl = a.User.AvatarUrl
+        }).ToList() ?? new(),
         Deadline = t.Deadline,
         StartDate = t.StartDate,
         Position = t.Position,

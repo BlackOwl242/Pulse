@@ -52,6 +52,8 @@ public class MeetingsController : ControllerBase
         if (workspace == null) return NotFound();
 
         var userId = _currentUser.UserId!.Value;
+        var startUtc = DateTime.SpecifyKind(req.StartTime, DateTimeKind.Utc);
+        var endUtc = DateTime.SpecifyKind(req.EndTime, DateTimeKind.Utc);
         var meeting = new Meeting
         {
             WorkspaceId = workspace.Id,
@@ -59,8 +61,8 @@ public class MeetingsController : ControllerBase
             Title = req.Title,
             Description = req.Description,
             Agenda = req.Agenda,
-            ProposedStartTime = req.StartTime,
-            ProposedEndTime = req.EndTime,
+            ProposedStartTime = startUtc,
+            ProposedEndTime = endUtc,
             Status = MeetingStatus.Proposed
         };
         _db.Meetings.Add(meeting);
@@ -92,18 +94,78 @@ public class MeetingsController : ControllerBase
         return NoContent();
     }
 
-    [HttpDelete("{meetingId}")]
-    public async Task<IActionResult> Cancel(string workspaceSlug, Guid meetingId)
+    [HttpPut("{meetingId}")]
+    public async Task<IActionResult> Update(string workspaceSlug, Guid meetingId, [FromBody] UpdateMeetingRequest req)
     {
-        var meeting = await _db.Meetings.FindAsync(meetingId);
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace == null) return NotFound();
+
+        var meeting = await _db.Meetings
+            .Include(m => m.Participants)
+            .FirstOrDefaultAsync(m => m.Id == meetingId && m.WorkspaceId == workspace.Id);
+            
         if (meeting == null) return NotFound();
-        meeting.Status = MeetingStatus.Cancelled;
+
+        // Only organizer can update (for now we assume simple check)
+        var userId = _currentUser.UserId!.Value;
+        if (meeting.OrganizerId != userId) return Forbid();
+
+        meeting.Title = req.Title;
+        meeting.Description = req.Description;
+        meeting.Agenda = req.Agenda;
+        meeting.ProposedStartTime = DateTime.SpecifyKind(req.StartTime, DateTimeKind.Utc);
+        meeting.ProposedEndTime = DateTime.SpecifyKind(req.EndTime, DateTimeKind.Utc);
+
+        // Sync participants (keep organizer)
+        var retainParticipants = new HashSet<Guid>(req.ParticipantIds ?? new List<Guid>());
+        retainParticipants.Add(meeting.OrganizerId); // Always keep organizer
+
+        var toRemove = meeting.Participants.Where(p => !retainParticipants.Contains(p.UserId)).ToList();
+        foreach (var p in toRemove) {
+            meeting.Participants.Remove(p);
+        }
+
+        var existingIds = meeting.Participants.Select(p => p.UserId).ToHashSet();
+        foreach (var pid in retainParticipants)
+        {
+            if (!existingIds.Contains(pid))
+            {
+                meeting.Participants.Add(new MeetingParticipant 
+                { 
+                    MeetingId = meeting.Id, 
+                    UserId = pid,
+                    ResponseStatus = pid == meeting.OrganizerId ? ResponseStatus.Accepted : ResponseStatus.Pending
+                });
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{meetingId}")]
+    public async Task<IActionResult> Delete(string workspaceSlug, Guid meetingId)
+    {
+        var meeting = await _db.Meetings.Include(m => m.Participants).FirstOrDefaultAsync(m => m.Id == meetingId);
+        if (meeting == null) return NotFound();
+        _db.MeetingParticipants.RemoveRange(meeting.Participants);
+        _db.Meetings.Remove(meeting);
         await _db.SaveChangesAsync();
         return NoContent();
     }
 }
 
 public class CreateMeetingRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? Agenda { get; set; }
+    public DateTime StartTime { get; set; }
+    public DateTime EndTime { get; set; }
+    public List<Guid>? ParticipantIds { get; set; }
+}
+
+public class UpdateMeetingRequest
 {
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }

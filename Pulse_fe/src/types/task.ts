@@ -23,7 +23,7 @@ export interface Task {
     description?: string;
     status: TaskStatus;
     priority: TaskPriority;
-    assignee?: Assignee;
+    assignees: Assignee[];
     deadline?: string;
     startDate?: string;
     position: number;
@@ -61,7 +61,7 @@ export interface CreateTaskRequest {
     title: string;
     description?: string;
     priority?: TaskPriority;
-    assigneeId?: string;
+    assigneeIds?: string[];
     deadline?: string;
     startDate?: string;
     parentTaskId?: string;
@@ -74,7 +74,7 @@ export interface UpdateTaskRequest {
     description?: string;
     priority?: TaskPriority;
     status?: TaskStatus;
-    assigneeId?: string;
+    assigneeIds?: string[];
     deadline?: string;
     startDate?: string;
     estimatedMinutes?: number;

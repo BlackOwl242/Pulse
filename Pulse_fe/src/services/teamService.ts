@@ -14,8 +14,10 @@ export interface TeamMemberInfo {
     id: string;
     firstName: string;
     lastName: string;
+    email?: string;
     avatarUrl?: string;
     role: string;
+    joinedAt?: string;
 }
 
 export interface CreateTeamRequest {
@@ -33,6 +35,9 @@ export const teamService = {
     getAll: (workspaceSlug: string) =>
         api.get<Team[]>(`/workspaces/${workspaceSlug}/teams`).then((res) => res.data),
 
+    getById: (workspaceSlug: string, teamId: string) =>
+        api.get<Team>(`/workspaces/${workspaceSlug}/teams/${teamId}`).then((res) => res.data),
+
     create: (workspaceSlug: string, data: CreateTeamRequest) =>
         api.post<Team>(`/workspaces/${workspaceSlug}/teams`, data).then((res) => res.data),
 
@@ -41,4 +46,7 @@ export const teamService = {
 
     removeMember: (workspaceSlug: string, teamId: string, userId: string) =>
         api.delete(`/workspaces/${workspaceSlug}/teams/${teamId}/members/${userId}`),
+
+    deleteTeam: (workspaceSlug: string, teamId: string) =>
+        api.delete(`/workspaces/${workspaceSlug}/teams/${teamId}`),
 };

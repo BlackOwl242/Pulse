@@ -42,6 +42,29 @@ public class TeamsController : ControllerBase
         return Ok(teams);
     }
 
+    [HttpGet("{teamId}")]
+    public async Task<IActionResult> GetById(string workspaceSlug, Guid teamId)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace == null) return NotFound();
+
+        var team = await _db.Teams
+            .Where(t => t.Id == teamId && t.WorkspaceId == workspace.Id)
+            .Select(t => new
+            {
+                t.Id, t.Name, t.Description, t.Color, t.CreatedAt,
+                MemberCount = t.Members.Count,
+                Members = t.Members.Select(m => new
+                {
+                    m.User.Id, m.User.FirstName, m.User.LastName, m.User.Email, m.User.AvatarUrl, m.Role, m.JoinedAt
+                })
+            })
+            .FirstOrDefaultAsync();
+
+        if (team == null) return NotFound();
+        return Ok(team);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create(string workspaceSlug, [FromBody] CreateTeamRequest request)
     {
@@ -68,7 +91,12 @@ public class TeamsController : ControllerBase
         });
 
         await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetAll), new { workspaceSlug }, team);
+        return CreatedAtAction(nameof(GetAll), new { workspaceSlug }, new
+        {
+            team.Id, team.Name, team.Description, team.Color, team.CreatedAt,
+            MemberCount = 1,
+            Members = new[] { new { _currentUser.UserId, Role = "lead" } }
+        });
     }
 
     [HttpPost("{teamId}/members")]
@@ -87,7 +115,7 @@ public class TeamsController : ControllerBase
         _db.TeamMembers.Add(member);
         await _db.SaveChangesAsync();
 
-        return Ok(member);
+        return Ok(new { message = "Member added", teamId, userId = request.UserId, role = member.Role });
     }
 
     [HttpDelete("{teamId}/members/{userId}")]
@@ -99,6 +127,24 @@ public class TeamsController : ControllerBase
         if (member == null) return NotFound();
 
         _db.TeamMembers.Remove(member);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpDelete("{teamId}")]
+    public async Task<IActionResult> DeleteTeam(string workspaceSlug, Guid teamId)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace == null) return NotFound();
+
+        var team = await _db.Teams
+            .Include(t => t.Members)
+            .FirstOrDefaultAsync(t => t.Id == teamId && t.WorkspaceId == workspace.Id);
+        if (team == null) return NotFound();
+
+        _db.TeamMembers.RemoveRange(team.Members);
+        _db.Teams.Remove(team);
         await _db.SaveChangesAsync();
 
         return NoContent();

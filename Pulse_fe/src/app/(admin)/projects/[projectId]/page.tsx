@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import DateTimePicker from "@/components/ui/DateTimePicker";
 import { useParams, useRouter } from "next/navigation";
 import { taskService } from "@/services/taskService";
 import { projectService, Project } from "@/services/projectService";
@@ -60,13 +61,17 @@ export default function ProjectBoardPage() {
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState("#6366f1");
+  // Assignee Search
+  const [showAssigneePicker, setShowAssigneePicker] = useState(false);
+  const [assigneeSearch, setAssigneeSearch] = useState("");
+  const assigneeInputRef = useRef<HTMLInputElement>(null);
   // Checklists
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [newChecklistItemText, setNewChecklistItemText] = useState<Record<string, string>>({});
 
-  const fetchBoard = useCallback(async () => {
+  const fetchBoard = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const [proj, board, mems] = await Promise.all([
         projectService.getById(slug, projectId),
         taskService.getBoardView(slug, projectId),
@@ -78,11 +83,11 @@ export default function ProjectBoardPage() {
     } catch {
       // ignore
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [slug, projectId]);
 
-  useEffect(() => { fetchBoard(); }, [fetchBoard]);
+  useEffect(() => { fetchBoard(true); }, [fetchBoard]);
 
   useEffect(() => {
     if (addingInColumn && inputRef.current) inputRef.current.focus();
@@ -95,6 +100,8 @@ export default function ProjectBoardPage() {
     setConfirmDelete(false);
     setComments([]);
     setShowLabelPicker(false);
+    setShowAssigneePicker(false);
+    setAssigneeSearch("");
     fetchComments(task.id);
     fetchLabels();
     fetchChecklists(task.id);
@@ -196,16 +203,51 @@ export default function ProjectBoardPage() {
   };
 
   // --- Save task changes ---
-  const handleSaveTask = async (field: string, value: unknown) => {
+  const handleSaveAllAndClose = async () => {
     if (!selectedTask) return;
     setSaving(true);
+    console.log("Saving task:", selectedTask.id, "Assignees:", selectedTask.assignees);
     try {
-      await taskService.update(slug, selectedTask.id, { [field]: value });
-      await fetchBoard();
-      // Update the selected task in panel
-      setSelectedTask(prev => prev ? { ...prev, [field]: value } : null);
-    } catch { /* ignore */ }
-    setSaving(false);
+      await taskService.update(slug, selectedTask.id, {
+        title: selectedTask.title,
+        description: selectedTask.description,
+        status: Number(selectedTask.status) as any,
+        priority: Number(selectedTask.priority) as any,
+        assigneeIds: selectedTask.assignees?.map((a) => a.id) || [],
+        startDate: selectedTask.startDate,
+        deadline: selectedTask.deadline
+      });
+      console.log("Task updated, fetching board...");
+      await fetchBoard(false);
+      console.log("Board fetched, closing panel.");
+      closePanel();
+    } catch (err) {
+      console.error("Error saving task:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFieldChange = (field: string, value: any) => {
+    if (!selectedTask) return;
+    if (field === "assigneeIds") {
+      // value is an array of userId strings [userId1, userId2]
+      const memberIds = Array.isArray(value) ? value : [];
+      const selectedMembers = members.filter((m) => memberIds.includes(m.userId));
+      console.log("Setting assignees to:", selectedMembers);
+      
+      setSelectedTask({
+        ...selectedTask,
+        assignees: selectedMembers.map(member => ({
+          id: member.userId,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          avatarUrl: member.avatarUrl
+        }))
+      });
+    } else {
+      setSelectedTask({ ...selectedTask, [field]: value });
+    }
   };
 
   // --- Delete task ---
@@ -364,13 +406,14 @@ export default function ProjectBoardPage() {
         })}
       </div>
 
-      {/* Task Detail Slide-over Panel */}
+      {/* Task Detail Centered Modal */}
       {selectedTask && (
-        <>
-          <div className={`fixed inset-0 top-16 xl:top-[72px] bg-black/30 z-40 transition-opacity duration-200 ${panelOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`} onClick={closePanel} />
-          <div className={`fixed top-16 xl:top-[72px] right-0 h-[calc(100vh-64px)] xl:h-[calc(100vh-72px)] w-full max-w-lg bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-40 transition-transform duration-200 ease-out ${panelOpen ? "translate-x-0" : "translate-x-full"} flex flex-col`}>
-            {/* Panel Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center sm:p-6">
+          <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 ${panelOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`} onClick={closePanel} />
+          
+          <div className={`relative w-full h-full sm:h-auto sm:max-h-[85vh] max-w-2xl bg-white dark:bg-gray-900 sm:rounded-xl shadow-2xl flex flex-col overflow-hidden transition-all duration-200 ease-out border-0 sm:border border-gray-200 dark:border-gray-800 ${panelOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4"}`}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 shrink-0 bg-gray-50/50 dark:bg-gray-800/50">
               <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Task Detail</h2>
               <div className="flex items-center gap-1">
                 {saving && <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />}
@@ -383,12 +426,12 @@ export default function ProjectBoardPage() {
             {/* Panel Body */}
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
               {/* Title — click to edit */}
-              <EditableText value={selectedTask.title} onSave={(v) => handleSaveTask("title", v)} className="text-xl font-bold text-gray-900 dark:text-white" placeholder="Task title..." />
+              <EditableText value={selectedTask.title} onSave={(v) => handleFieldChange("title", v)} className="text-xl font-bold text-gray-900 dark:text-white" placeholder="Task title..." />
 
               {/* Description */}
               <div>
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Description</label>
-                <EditableText value={selectedTask.description || ""} onSave={(v) => handleSaveTask("description", v)} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed" placeholder="Add a description..." multiline />
+                <EditableText value={selectedTask.description || ""} onSave={(v) => handleFieldChange("description", v)} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed" placeholder="Add a description..." multiline />
               </div>
 
               {/* Status & Priority */}
@@ -397,7 +440,7 @@ export default function ProjectBoardPage() {
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Status</label>
                   <select
                     value={Number(selectedTask.status)}
-                    onChange={(e) => handleSaveTask("status", Number(e.target.value))}
+                    onChange={(e) => handleFieldChange("status", Number(e.target.value))}
                     className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none"
                   >
                     {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
@@ -409,7 +452,7 @@ export default function ProjectBoardPage() {
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Priority</label>
                   <select
                     value={Number(selectedTask.priority)}
-                    onChange={(e) => handleSaveTask("priority", Number(e.target.value))}
+                    onChange={(e) => handleFieldChange("priority", Number(e.target.value))}
                     className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none"
                   >
                     {PRIORITY_OPTIONS.map((p) => (
@@ -419,41 +462,120 @@ export default function ProjectBoardPage() {
                 </div>
               </div>
 
-              {/* Assignee */}
-              <div>
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Assignee</label>
-                <select
-                  value={selectedTask.assignee?.id || ""}
-                  onChange={(e) => handleSaveTask("assigneeId", e.target.value || null)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none"
+              {/* Assignee Selection (Custom Dropdown) */}
+              <div className="relative">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Assignees</label>
+                
+                <div 
+                  onClick={() => {
+                    setShowAssigneePicker(!showAssigneePicker);
+                    if (!showAssigneePicker) setTimeout(() => assigneeInputRef.current?.focus(), 100);
+                  }}
+                  className="w-full min-h-[40px] px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white cursor-pointer hover:border-brand-500 transition-colors flex flex-wrap gap-2 items-center"
                 >
-                  <option value="">Unassigned</option>
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id}>{m.firstName} {m.lastName}</option>
-                  ))}
-                </select>
+                  {selectedTask.assignees && selectedTask.assignees.length > 0 ? (
+                    selectedTask.assignees.map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md mb-1">
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-brand-500 shrink-0">
+                          {a.avatarUrl ? (
+                            <img src={a.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                          ) : (
+                            `${a.firstName?.charAt(0)}${a.lastName?.charAt(0)}`
+                          )}
+                        </div>
+                        <span className="text-xs font-medium">{a.firstName} {a.lastName}</span>
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            const newIds = selectedTask.assignees.filter(asg => asg.id !== a.id).map(asg => asg.id);
+                            handleFieldChange("assigneeIds", newIds); 
+                          }}
+                          className="text-gray-400 hover:text-red-500 transition-colors ml-1"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 flex-1">Unassigned</span>
+                  )}
+                  <svg className={`w-4 h-4 text-gray-400 ml-auto transition-transform ${showAssigneePicker ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+
+                {showAssigneePicker && (
+                  <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden">
+                    <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                      <div className="relative">
+                        <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                          ref={assigneeInputRef}
+                          type="text"
+                          placeholder="Search by name or email..."
+                          value={assigneeSearch}
+                          onChange={(e) => setAssigneeSearch(e.target.value)}
+                          className="w-full pl-9 pr-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-900 border border-transparent rounded-md focus:border-brand-500 focus:bg-white dark:focus:bg-gray-800 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto p-1">
+                      {members.filter(m => 
+                        `${m.firstName} ${m.lastName}`.toLowerCase().includes(assigneeSearch.toLowerCase()) || 
+                        m.email.toLowerCase().includes(assigneeSearch.toLowerCase())
+                      ).map((m) => {
+                        const isSelected = selectedTask.assignees?.some(a => a.id === m.userId);
+                        return (
+                          <button
+                            key={m.userId}
+                            onClick={() => {
+                              const currentIds = selectedTask.assignees?.map(a => a.id) || [];
+                              const newIds = isSelected 
+                                ? currentIds.filter(id => id !== m.userId) 
+                                : [...currentIds, m.userId];
+                              handleFieldChange("assigneeIds", newIds);
+                              // We don't auto-close the picker so they can click multiple
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left ${isSelected ? "bg-brand-50 dark:bg-brand-900/20" : ""}`}
+                          >
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-brand-500 shrink-0">
+                              {m.avatarUrl ? (
+                                <img src={m.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                              ) : (
+                                `${m.firstName.charAt(0)}${m.lastName.charAt(0)}`
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium truncate ${isSelected ? "text-brand-700 dark:text-brand-300" : "text-gray-900 dark:text-white"}`}>
+                                {m.firstName} {m.lastName}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">{m.email}</p>
+                            </div>
+                            {isSelected && (
+                              <svg className="w-4 h-4 text-brand-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                      {members.filter(m => 
+                        `${m.firstName} ${m.lastName}`.toLowerCase().includes(assigneeSearch.toLowerCase()) || 
+                        m.email.toLowerCase().includes(assigneeSearch.toLowerCase())
+                      ).length === 0 && (
+                        <p className="text-xs text-gray-400 text-center py-3">No members found</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Dates */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Start Date</label>
-                  <input
-                    type="date"
-                    value={selectedTask.startDate?.split("T")[0] || ""}
-                    onChange={(e) => handleSaveTask("startDate", e.target.value || null)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Deadline</label>
-                  <input
-                    type="date"
-                    value={selectedTask.deadline?.split("T")[0] || ""}
-                    onChange={(e) => handleSaveTask("deadline", e.target.value || null)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none"
-                  />
-                </div>
+                <DateTimePicker label="Start Date" value={selectedTask.startDate?.split("T")[0] || ""} onChange={(v) => handleFieldChange("startDate", v || null)} placeholder="Select date" />
+                <DateTimePicker label="Deadline" value={selectedTask.deadline?.split("T")[0] || ""} onChange={(v) => handleFieldChange("deadline", v || null)} placeholder="Select date" />
               </div>
 
               {/* Labels */}
@@ -625,30 +747,41 @@ export default function ProjectBoardPage() {
               </div>
             </div>
 
-            {/* Panel Footer — Delete */}
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 shrink-0">
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 shrink-0 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50">
               {confirmDelete ? (
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-red-500 flex-1">Delete this task?</span>
-                  <button onClick={() => setConfirmDelete(false)} className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700">
+                  <button onClick={() => setConfirmDelete(false)} className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     Cancel
                   </button>
-                  <button onClick={handleDeleteTask} disabled={deleting} className="px-3 py-1.5 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50 flex items-center gap-1.5">
+                  <button onClick={handleDeleteTask} disabled={deleting} className="px-3 py-1.5 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50 flex items-center gap-1.5 transition-colors shadow-sm">
                     {deleting && <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     Confirm
                   </button>
                 </div>
               ) : (
-                <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-2 text-sm text-gray-400 hover:text-red-500 transition-colors">
+                <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-2 text-sm text-gray-400 hover:text-red-500 transition-colors py-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                   Delete task
                 </button>
               )}
+              
+              {!confirmDelete && (
+                <div className="flex items-center gap-3">
+                  <button onClick={closePanel} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={handleSaveAllAndClose} className="px-5 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg shadow-sm transition-colors flex items-center gap-2">
+                    {saving ? "Saving..." : "Save & Close"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -741,9 +874,22 @@ function TaskCard({ task, isDragging, onDragStart, onDragEnd, onClick }: {
           {task.subtaskCount > 0 && <span className="text-[10px] text-gray-400">☑ {task.completedSubtaskCount}/{task.subtaskCount}</span>}
           {task.commentCount > 0 && <span className="text-[10px] text-gray-400">💬 {task.commentCount}</span>}
         </div>
-        {task.assignee && (
-          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-brand-500 shrink-0" title={`${task.assignee.firstName} ${task.assignee.lastName}`}>
-            {task.assignee.firstName?.charAt(0)}{task.assignee.lastName?.charAt(0)}
+        {task.assignees && task.assignees.length > 0 && (
+          <div className="flex -space-x-1.5 overflow-hidden">
+            {task.assignees.slice(0, 3).map((a) => (
+              <div key={a.id} className="w-6 h-6 rounded-full border border-white dark:border-gray-900 flex items-center justify-center text-[10px] font-bold text-white bg-brand-500 shrink-0" title={`${a.firstName} ${a.lastName}`}>
+                {a.avatarUrl ? (
+                  <img src={a.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  `${a.firstName?.charAt(0)}${a.lastName?.charAt(0)}`
+                )}
+              </div>
+            ))}
+            {task.assignees.length > 3 && (
+              <div className="w-6 h-6 rounded-full border border-white dark:border-gray-900 flex items-center justify-center text-[10px] font-bold text-gray-700 bg-gray-100 shrink-0" title={`+${task.assignees.length - 3} more`}>
+                +{task.assignees.length - 3}
+              </div>
+            )}
           </div>
         )}
       </div>

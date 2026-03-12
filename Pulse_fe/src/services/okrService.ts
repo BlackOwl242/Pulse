@@ -31,6 +31,7 @@ export interface CreateObjectiveRequest {
     period?: string;
     startDate?: string;
     endDate?: string;
+    status?: number;
 }
 
 export interface CreateKRRequest {
@@ -59,4 +60,13 @@ export const okrService = {
 
     checkIn: (slug: string, krId: string, data: CheckInRequest) =>
         api.put(`/workspaces/${slug}/objectives/key-results/${krId}/check-in`, data).then(r => r.data),
+
+    deleteObjective: (slug: string, objectiveId: string) =>
+        api.delete(`/workspaces/${slug}/objectives/${objectiveId}`),
+
+    updateObjective: (slug: string, objectiveId: string, data: Partial<CreateObjectiveRequest>) =>
+        api.put(`/workspaces/${slug}/objectives/${objectiveId}`, data),
+
+    deleteKeyResult: (slug: string, krId: string) =>
+        api.delete(`/workspaces/${slug}/objectives/key-results/${krId}`),
 };

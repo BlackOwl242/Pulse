@@ -40,7 +40,8 @@ public class ChatController : ControllerBase
                     Sender = new { m.Sender.FirstName, m.Sender.LastName }
                 }).FirstOrDefault(),
                 MemberCount = c.Members.Count,
-                UnreadCount = c.Messages.Count(m => m.SenderId != userId && m.CreatedAt > (c.Members.First(mb => mb.UserId == userId).LastReadAt ?? DateTime.MinValue))
+                UnreadCount = c.Messages.Count(m => m.SenderId != userId && m.CreatedAt > (c.Members.First(mb => mb.UserId == userId).LastReadAt ?? DateTime.MinValue)),
+                Members = c.Members.Select(m => new { m.UserId, m.User.FirstName, m.User.LastName, m.User.AvatarUrl }).ToList()
             })
             .ToListAsync();
         return Ok(channels);

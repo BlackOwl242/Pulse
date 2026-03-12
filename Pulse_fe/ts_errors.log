@@ -1,0 +1,35 @@
+﻿src/app/(admin)/my-tasks/page.tsx(44,37): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(209,76): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(216,9): error TS2561: Object literal may only specify known properties, but 'assigneeId' does not exist in type 'UpdateTaskRequest'. Did you mean to write 'assigneeIds'?
+src/app/(admin)/projects/[projectId]/page.tsx(216,34): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(239,9): error TS2353: Object literal may only specify known properties, and 'assignee' does not exist in type 'Task | ((prevState: Task | null) => Task | null)'.
+src/app/(admin)/projects/[projectId]/page.tsx(469,33): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(472,39): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(473,50): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(475,43): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(475,88): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(478,75): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(478,109): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(516,57): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(860,15): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(861,152): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(861,179): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(862,19): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/page.tsx(862,55): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/tasks/page.tsx(171,29): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/tasks/page.tsx(174,35): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/tasks/page.tsx(174,71): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/tasks/page.tsx(176,92): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/app/(admin)/projects/[projectId]/tasks/page.tsx(176,118): error TS2551: Property 'assignee' does not exist on type 'Task'. Did you mean 'assignees'?
+src/components/auth/SignInForm.tsx(107,21): error TS2322: Type '{ type: string; placeholder: string; value: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void; required: true; }' is not assignable to type 'IntrinsicAttributes & InputProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & InputProps'.
+src/components/auth/SignInForm.tsx(120,23): error TS2322: Type '{ type: string; placeholder: string; value: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void; required: true; }' is not assignable to type 'IntrinsicAttributes & InputProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & InputProps'.
+src/components/auth/SignUpForm.tsx(119,23): error TS2322: Type '{ type: string; placeholder: string; value: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void; required: true; }' is not assignable to type 'IntrinsicAttributes & InputProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & InputProps'.
+src/components/auth/SignUpForm.tsx(131,23): error TS2322: Type '{ type: string; placeholder: string; value: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void; required: true; }' is not assignable to type 'IntrinsicAttributes & InputProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & InputProps'.
+src/components/auth/SignUpForm.tsx(144,21): error TS2322: Type '{ type: string; placeholder: string; value: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void; required: true; }' is not assignable to type 'IntrinsicAttributes & InputProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & InputProps'.
+src/components/auth/SignUpForm.tsx(157,23): error TS2322: Type '{ placeholder: string; type: string; value: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void; required: true; }' is not assignable to type 'IntrinsicAttributes & InputProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & InputProps'.

@@ -1,8 +1,22 @@
-"use client";
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, KeyboardEvent } from "react";
 import AiSidebarHistory from "./AiSidebarHistory";
+import { AIConversation } from "@/services/aiService";
 
-export default function AiLayout({ children }: { children: ReactNode }) {
+interface AiLayoutProps {
+  children: ReactNode;
+  conversations: AIConversation[];
+  activeConv: string | null;
+  openConversation: (id: string) => void;
+  startNew: () => void;
+  msgInput: string;
+  setMsgInput: (s: string) => void;
+  sendMessage: () => void;
+  sending: boolean;
+}
+
+export default function AiLayout({ 
+  children, conversations, activeConv, openConversation, startNew, msgInput, setMsgInput, sendMessage, sending
+}: AiLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   return (
     <div className="relative h-[calc(100vh-134px)] xl:h-[calc(100vh-146px)] px-4 xl:flex xl:px-0">
@@ -41,6 +55,15 @@ export default function AiLayout({ children }: { children: ReactNode }) {
               {/* <!-- Textarea --> */}
               <textarea
                 placeholder="Type your prompt here..."
+                value={msgInput}
+                onChange={(e) => setMsgInput(e.target.value)}
+                onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+                disabled={sending}
                 className="h-20 w-full resize-none border-none bg-transparent p-0 font-normal text-gray-800 outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white"
               ></textarea>
 
@@ -66,7 +89,12 @@ export default function AiLayout({ children }: { children: ReactNode }) {
                 </button>
 
                 {/* <!-- Send Button --> */}
-                <button className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 text-white transition hover:bg-gray-800 dark:bg-white/90 dark:text-gray-800 dark:hover:bg-gray-900 dark:hover:text-white/90">
+                <button 
+                  onClick={sendMessage}
+                  disabled={sending || !(msgInput || "").trim()}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 text-white transition hover:bg-gray-800 dark:bg-white/90 dark:text-gray-800 dark:hover:bg-gray-900 dark:hover:text-white/90 disabled:opacity-50"
+                >
+                  {sending ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : 
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="20"
@@ -80,7 +108,7 @@ export default function AiLayout({ children }: { children: ReactNode }) {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
-                  </svg>
+                  </svg>}
                 </button>
               </div>
             </div>
@@ -91,6 +119,10 @@ export default function AiLayout({ children }: { children: ReactNode }) {
       <AiSidebarHistory
         isSidebarOpen={sidebarOpen}
         onCloseSidebar={() => setSidebarOpen(false)}
+        conversations={conversations}
+        activeConv={activeConv}
+        openConversation={openConversation}
+        startNew={startNew}
       />
     </div>
   );

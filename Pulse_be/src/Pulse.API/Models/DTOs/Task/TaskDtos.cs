@@ -8,7 +8,7 @@ public class CreateTaskRequest
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public TaskPriority Priority { get; set; } = TaskPriority.None;
-    public Guid? AssigneeId { get; set; }
+    public List<Guid>? AssigneeIds { get; set; }
     public DateTime? Deadline { get; set; }
     public DateTime? StartDate { get; set; }
     public Guid? ParentTaskId { get; set; }
@@ -22,7 +22,7 @@ public class UpdateTaskRequest
     public string? Description { get; set; }
     public TaskPriority? Priority { get; set; }
     public TaskItemStatus? Status { get; set; }
-    public Guid? AssigneeId { get; set; }
+    public List<Guid>? AssigneeIds { get; set; }
     public DateTime? Deadline { get; set; }
     public DateTime? StartDate { get; set; }
     public int? EstimatedMinutes { get; set; }
@@ -37,7 +37,7 @@ public class TaskDto
     public string? Description { get; set; }
     public TaskItemStatus Status { get; set; }
     public TaskPriority Priority { get; set; }
-    public AssigneeDto? Assignee { get; set; }
+    public List<AssigneeDto> Assignees { get; set; } = new();
     public DateTime? Deadline { get; set; }
     public DateTime? StartDate { get; set; }
     public int Position { get; set; }

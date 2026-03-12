@@ -43,15 +43,17 @@ public class TimeTrackingController : ControllerBase
         if (workspace == null) return NotFound();
 
         var userId = _currentUser.UserId!.Value;
+        var startUtc = DateTime.SpecifyKind(req.StartTime, DateTimeKind.Utc);
+        var endUtc = req.EndTime.HasValue ? DateTime.SpecifyKind(req.EndTime.Value, DateTimeKind.Utc) : (DateTime?)null;
         var entry = new TimeEntry
         {
             TaskId = taskId,
             UserId = userId,
             WorkspaceId = workspace.Id,
             Note = req.Note,
-            StartTime = req.StartTime,
-            EndTime = req.EndTime,
-            DurationMinutes = req.DurationMinutes > 0 ? req.DurationMinutes : (req.EndTime.HasValue ? (int)(req.EndTime.Value - req.StartTime).TotalMinutes : null),
+            StartTime = startUtc,
+            EndTime = endUtc,
+            DurationMinutes = req.DurationMinutes > 0 ? req.DurationMinutes : (endUtc.HasValue ? (int)(endUtc.Value - startUtc).TotalMinutes : null),
             IsRunning = false
         };
         _db.TimeEntries.Add(entry);
@@ -77,8 +79,8 @@ public class TimeTrackingController : ControllerBase
 
         var userId = _currentUser.UserId!.Value;
         var query = _db.TimeEntries.Where(t => t.UserId == userId && t.WorkspaceId == workspace.Id);
-        if (from.HasValue) query = query.Where(t => t.StartTime >= from.Value);
-        if (to.HasValue) query = query.Where(t => t.StartTime <= to.Value);
+        if (from.HasValue) query = query.Where(t => t.StartTime >= DateTime.SpecifyKind(from.Value, DateTimeKind.Utc));
+        if (to.HasValue) query = query.Where(t => t.StartTime <= DateTime.SpecifyKind(to.Value, DateTimeKind.Utc));
 
         var entries = await query
             .OrderByDescending(t => t.StartTime)

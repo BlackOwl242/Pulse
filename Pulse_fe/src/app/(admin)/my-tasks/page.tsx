@@ -41,7 +41,7 @@ export default function MyTasksPage() {
       for (const proj of projects) {
         const boards = await taskService.getBoardView(slug, proj.id).catch(() => [] as BoardColumn[]);
         const myTasks = boards.flatMap((col) =>
-          col.tasks.filter((t) => t.assignee?.id === user?.id)
+          col.tasks.filter((t) => t.assignees?.some((a) => a.id === user?.id))
         );
         if (statusFilter) {
           const filtered = myTasks.filter((t) => String(t.status) === statusFilter);

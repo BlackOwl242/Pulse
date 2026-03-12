@@ -6,6 +6,7 @@ using Pulse.API.Data;
 using Pulse.API.Models.DTOs.Workspace;
 using Pulse.API.Models.Entities.Identity;
 using Pulse.API.Models.Entities.Organization;
+using Pulse.API.Models.Enums;
 using Pulse.API.Services.Interfaces;
 using System.Text.RegularExpressions;
 
@@ -228,6 +229,87 @@ public class WorkspacesController : ControllerBase
         // TODO: Send email via IEmailService
 
         return Ok(new { message = "Invitation sent", token = invitation.Token });
+    }
+
+    /// <summary>
+    /// List pending invitations for a workspace
+    /// </summary>
+    [HttpGet("{slug}/invitations")]
+    public async Task<IActionResult> GetInvitations(string slug)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        var invitations = await _db.Invitations
+            .Where(i => i.WorkspaceId == workspace.Id && i.Status == InvitationStatus.Pending)
+            .OrderByDescending(i => i.CreatedAt)
+            .Select(i => new
+            {
+                i.Id,
+                i.Email,
+                RoleId = i.RoleId,
+                RoleName = i.Role.Name,
+                InvitedBy = i.InvitedBy.FirstName + " " + i.InvitedBy.LastName,
+                i.ExpiresAt,
+                i.CreatedAt,
+                Status = i.Status.ToString()
+            })
+            .ToListAsync();
+
+        return Ok(invitations);
+    }
+
+    /// <summary>
+    /// Revoke a pending invitation
+    /// </summary>
+    [HttpDelete("{slug}/invitations/{invitationId:guid}")]
+    public async Task<IActionResult> RevokeInvitation(string slug, Guid invitationId)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        var invitation = await _db.Invitations
+            .FirstOrDefaultAsync(i => i.Id == invitationId && i.WorkspaceId == workspace.Id);
+        if (invitation == null) return NotFound(new { message = "Invitation not found" });
+
+        invitation.Status = InvitationStatus.Revoked;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Invitation revoked" });
+    }
+
+    /// <summary>
+    /// Directly add a registered user to the workspace by email
+    /// </summary>
+    [HttpPost("{slug}/members/add")]
+    [RequirePermission("workspace.invite_member")]
+    public async Task<IActionResult> AddMemberByEmail(string slug, [FromBody] AddMemberByEmailRequest request)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        if (user == null) return NotFound(new { message = "No registered user found with this email" });
+
+        // Check if already a member
+        var existing = await _db.UserWorkspaceRoles
+            .AnyAsync(uwr => uwr.UserId == user.Id && uwr.WorkspaceId == workspace.Id);
+        if (existing) return BadRequest(new { message = "User is already a member of this workspace" });
+
+        // Verify role exists
+        var role = await _db.Roles.FirstOrDefaultAsync(r =>
+            r.Id == request.RoleId && (r.WorkspaceId == null || r.WorkspaceId == workspace.Id));
+        if (role == null) return BadRequest(new { message = "Invalid role" });
+
+        _db.UserWorkspaceRoles.Add(new UserWorkspaceRole
+        {
+            UserId = user.Id,
+            WorkspaceId = workspace.Id,
+            RoleId = request.RoleId
+        });
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Member added", userId = user.Id, email = user.Email, firstName = user.FirstName, lastName = user.LastName });
     }
 
     private static string GenerateSlug(string name)

@@ -42,6 +42,7 @@ public class ApplicationDbContext : DbContext
     // Module 3: Task Management
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
+    public DbSet<TaskAssignee> TaskAssignees => Set<TaskAssignee>();
     public DbSet<TaskFollower> TaskFollowers => Set<TaskFollower>();
     public DbSet<TaskLabel> TaskLabels => Set<TaskLabel>();
     public DbSet<TaskLabelAssignment> TaskLabelAssignments => Set<TaskLabelAssignment>();
@@ -175,6 +176,11 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<TaskFollower>(e =>
         {
             e.HasKey(tf => new { tf.TaskId, tf.UserId });
+        });
+
+        modelBuilder.Entity<TaskAssignee>(e =>
+        {
+            e.HasKey(ta => new { ta.TaskId, ta.UserId });
         });
 
         modelBuilder.Entity<TaskLabelAssignment>(e =>

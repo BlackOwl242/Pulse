@@ -5,7 +5,7 @@ import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { MoreDotIcon } from "@/icons";
 import Image from "next/image";
 
-export default function ChatBoxHeader({ title, avatarUrl }: { title?: string, avatarUrl?: string }) {
+export default function ChatBoxHeader() {
   const [isOpen, setIsOpen] = useState(false);
 
   function toggleDropdown() {
@@ -17,27 +17,21 @@ export default function ChatBoxHeader({ title, avatarUrl }: { title?: string, av
   }
 
   return (
-    <div className="sticky flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 xl:px-6 shrink-0">
+    <div className="sticky flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 xl:px-6">
       <div className="flex items-center gap-3">
         <div className="relative h-12 w-full max-w-[48px] rounded-full">
-          {avatarUrl ? (
           <Image
             width={48}
             height={48}
-            src={avatarUrl}
+            src="/images/user/user-17.jpg"
             alt="profile"
             className="object-cover object-center w-full h-full overflow-hidden rounded-full"
           />
-          ) : (
-            <div className="w-full h-full bg-brand-500 flex items-center justify-center text-white font-bold text-lg rounded-full">
-              {title?.charAt(0) || "#"}
-            </div>
-          )}
           <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full border-[1.5px] border-white bg-success-500 dark:border-gray-900"></span>
         </div>
 
         <h5 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-          {title || "Chat"}
+          Lindsey Curtis
         </h5>
       </div>
 

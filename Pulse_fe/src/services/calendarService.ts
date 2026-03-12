@@ -31,4 +31,7 @@ export const calendarService = {
 
     createEvent: (slug: string, data: CreateCalendarEventRequest) =>
         api.post(`/workspaces/${slug}/calendar`, data).then(r => r.data),
+
+    deleteEvent: (slug: string, eventId: string) =>
+        api.delete(`/workspaces/${slug}/calendar/${eventId}`),
 };

@@ -26,7 +26,7 @@ public class PlannerController : ControllerBase
     public async Task<IActionResult> GetBlocks(string workspaceSlug, [FromQuery] DateTime date)
     {
         var userId = _currentUser.UserId!.Value;
-        var startOfDay = date.Date;
+        var startOfDay = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
         var endOfDay = startOfDay.AddDays(1);
 
         var blocks = await _db.PlannerBlocks
@@ -50,8 +50,8 @@ public class PlannerController : ControllerBase
             UserId = userId,
             TaskId = req.TaskId,
             Title = req.Title,
-            StartTime = req.StartTime,
-            EndTime = req.EndTime,
+            StartTime = DateTime.SpecifyKind(req.StartTime, DateTimeKind.Utc),
+            EndTime = DateTime.SpecifyKind(req.EndTime, DateTimeKind.Utc),
             Type = req.Type,
             RecurrencePattern = req.RecurrencePattern
         };
@@ -67,8 +67,8 @@ public class PlannerController : ControllerBase
         if (block == null) return NotFound();
 
         if (req.Title != null) block.Title = req.Title;
-        if (req.StartTime.HasValue) block.StartTime = req.StartTime.Value;
-        if (req.EndTime.HasValue) block.EndTime = req.EndTime.Value;
+        if (req.StartTime.HasValue) block.StartTime = DateTime.SpecifyKind(req.StartTime.Value, DateTimeKind.Utc);
+        if (req.EndTime.HasValue) block.EndTime = DateTime.SpecifyKind(req.EndTime.Value, DateTimeKind.Utc);
         if (req.Type.HasValue) block.Type = req.Type.Value;
 
         await _db.SaveChangesAsync();

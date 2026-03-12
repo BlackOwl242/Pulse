@@ -72,15 +72,20 @@ public class ProjectsController : ControllerBase
             Description = request.Description,
             Color = request.Color,
             Icon = request.Icon,
-            StartDate = request.StartDate,
-            EndDate = request.EndDate,
+            StartDate = request.StartDate.HasValue ? DateTime.SpecifyKind(request.StartDate.Value, DateTimeKind.Utc) : null,
+            EndDate = request.EndDate.HasValue ? DateTime.SpecifyKind(request.EndDate.Value, DateTimeKind.Utc) : null,
             CreatedById = _currentUser.UserId!.Value,
         };
 
         _db.Projects.Add(project);
         await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetById), new { workspaceSlug, projectId = project.Id }, project);
+        return CreatedAtAction(nameof(GetById), new { workspaceSlug, projectId = project.Id }, new
+        {
+            project.Id, project.Name, project.Description, project.Color, project.Icon, project.Status,
+            project.StartDate, project.EndDate, project.CreatedAt,
+            TaskCount = 0, CompletedTaskCount = 0
+        });
     }
 
     [HttpPut("{projectId}")]

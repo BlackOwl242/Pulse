@@ -36,8 +36,7 @@ public class TaskItem : AuditableEntity, ISoftDeletable
     public string? Description { get; set; }
     public TaskItemStatus Status { get; set; } = TaskItemStatus.Todo;
     public TaskPriority Priority { get; set; } = TaskPriority.None;
-    public Guid? AssigneeId { get; set; }
-    public User? Assignee { get; set; }
+    public ICollection<TaskAssignee> Assignees { get; set; } = new List<TaskAssignee>();
     public DateTime? Deadline { get; set; }
     public DateTime? StartDate { get; set; }
     public int Position { get; set; }
@@ -58,6 +57,15 @@ public class TaskItem : AuditableEntity, ISoftDeletable
     public ICollection<TaskComment> Comments { get; set; } = new List<TaskComment>();
     public ICollection<TaskDependency> Dependencies { get; set; } = new List<TaskDependency>();
     public ICollection<TaskDependency> Dependents { get; set; } = new List<TaskDependency>();
+}
+
+public class TaskAssignee
+{
+    public Guid TaskId { get; set; }
+    public TaskItem Task { get; set; } = null!;
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+    public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class TaskFollower

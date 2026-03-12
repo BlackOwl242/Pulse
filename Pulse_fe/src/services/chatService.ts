@@ -4,6 +4,7 @@ export interface ChatChannel {
     id: string; name?: string; type: number;
     lastMessage?: { content: string; createdAt: string; sender: { firstName: string; lastName: string } };
     memberCount: number; unreadCount: number;
+    members?: { userId: string; firstName: string; lastName: string; avatarUrl?: string }[];
 }
 
 export interface ChatMessage {
