@@ -30,6 +30,14 @@ export default function ChatBoxSendForm({ msgInput, setMsgInput, sendMessage, se
 
           <input
             type="text"
+            value={msgInput}
+            onChange={(e) => setMsgInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
             placeholder="Type a message"
             className="w-full pl-12 pr-5 text-sm text-gray-800 bg-transparent border-none outline-hidden h-9 placeholder:text-gray-400 focus:border-0 focus:ring-0 dark:text-white/90"
           />

@@ -1,6 +1,6 @@
 import * as signalR from '@microsoft/signalr';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5182';
 
 let notificationConnection: signalR.HubConnection | null = null;
 let chatConnection: signalR.HubConnection | null = null;
@@ -42,19 +42,26 @@ export async function connectChat(
     onMessage: (message: unknown) => void,
     onTyping?: (data: unknown) => void
 ): Promise<signalR.HubConnection> {
-    if (chatConnection) {
-        await chatConnection.stop();
+    if (!chatConnection) {
+        chatConnection = createConnection('chat');
     }
 
-    chatConnection = createConnection('chat');
+    chatConnection.off('ReceiveMessage');
+    chatConnection.off('UserTyping');
 
     chatConnection.on('ReceiveMessage', onMessage);
     if (onTyping) {
         chatConnection.on('UserTyping', onTyping);
     }
 
-    await chatConnection.start();
-    console.log('[SignalR] Connected to chat hub');
+    if (chatConnection.state === signalR.HubConnectionState.Disconnected) {
+        try {
+            await chatConnection.start();
+            console.log('[SignalR] Connected to chat hub');
+        } catch (err) {
+            console.warn('[SignalR] Connection start issue (safe to ignore if cancelled):', err);
+        }
+    }
 
     return chatConnection;
 }

@@ -28,6 +28,7 @@ public class ChatChannelMember
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastReadAt { get; set; }
     public bool IsMuted { get; set; }
+    public DateTime? HiddenAt { get; set; }
 }
 
 public class ChatMessage : BaseEntity, ISoftDeletable

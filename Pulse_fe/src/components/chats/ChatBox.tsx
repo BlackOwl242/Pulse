@@ -11,9 +11,12 @@ interface ChatBoxProps {
   msgInput: string;
   setMsgInput: (s: string) => void;
   sendMessage: () => void;
+  sendMessage: () => void;
   sending: boolean;
   messagesEndRef: RefObject<HTMLDivElement>;
   timeAgo: (d: string) => string;
+  onBack?: () => void;
+  onChannelAction?: (action: 'hide' | 'leave') => void;
 }
 
 const chatList: ChatItem[] = [
@@ -80,10 +83,10 @@ const chatList: ChatItem[] = [
   },
 ];
 
-export default function ChatBox({ activeChannelData, messages, user, msgInput, setMsgInput, sendMessage, sending, messagesEndRef, timeAgo }: ChatBoxProps) {
+export default function ChatBox({ activeChannelData, messages, user, msgInput, setMsgInput, sendMessage, sending, messagesEndRef, timeAgo, onBack, onChannelAction }: ChatBoxProps) {
   if (!activeChannelData) {
     return (
-      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] xl:w-3/4 items-center justify-center p-4">
+      <div className="hidden xl:flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] items-center justify-center p-4">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-brand-50 flex items-center justify-center dark:bg-brand-500/10 text-brand-500">
             <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03-8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
@@ -100,9 +103,9 @@ export default function ChatBox({ activeChannelData, messages, user, msgInput, s
   const avatarUrl = otherUser?.avatarUrl || "";
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] xl:w-3/4">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
       {/* <!-- ====== Chat Box Start --> */}
-      <ChatBoxHeader title={chatName} avatarUrl={avatarUrl} />
+      <ChatBoxHeader title={chatName} avatarUrl={avatarUrl} onBack={onBack} isGroup={!isDirect} onAction={onChannelAction} />
       <div className="flex-1 max-h-full p-5 space-y-6 overflow-auto custom-scrollbar xl:space-y-8 xl:p-6">
         {messages.map((chat) => {
           const isSender = chat.sender.id === user?.id;

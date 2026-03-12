@@ -6,6 +6,8 @@ import { WorkspaceMember } from "@/types/roles";
 import { useAuthStore } from "@/stores/useAuthStore";
 import ChatSidebar from "@/components/chats/ChatSidebar";
 import ChatBox from "@/components/chats/ChatBox";
+import CreateGroupChatModal from "@/components/chats/CreateGroupChatModal";
+import { connectChat, joinChatChannel, leaveChatChannel, disconnectAll } from "@/lib/socket";
 
 export default function ChatPage() {
   const user = useAuthStore((s) => s.user);
@@ -17,7 +19,9 @@ export default function ChatPage() {
   const [search, setSearch] = useState("");
   const [msgInput, setMsgInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const activeChannelRef = useRef<string | null>(null);
   const slug = "pulse-demo";
 
   const fetchChannels = useCallback(async () => {
@@ -29,10 +33,38 @@ export default function ChatPage() {
     setLoading(false);
   }, [slug]);
 
-  useEffect(() => { fetchChannels(); }, [fetchChannels]);
+  useEffect(() => { 
+    fetchChannels(); 
+    
+    let mounted = true;
+    connectChat((data: any) => {
+      if (activeChannelRef.current === data.channelId) {
+        chatService.getMessages(slug, data.channelId).then(msgs => {
+          if (mounted) {
+            setMessages(msgs.reverse());
+            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+          }
+        }).catch(console.error);
+      }
+    }).catch(console.error);
+
+    return () => {
+      mounted = false;
+    };
+  }, [fetchChannels]);
+
+  useEffect(() => {
+    if (activeChannel) {
+      joinChatChannel(activeChannel).catch(console.error);
+    }
+    return () => {
+      if (activeChannel) leaveChatChannel(activeChannel).catch(console.error);
+    };
+  }, [activeChannel]);
 
   const openChannel = async (channelId: string) => {
     setActiveChannel(channelId);
+    activeChannelRef.current = channelId;
     try {
       const msgs = await chatService.getMessages(slug, channelId);
       setMessages(msgs.reverse());
@@ -80,6 +112,20 @@ export default function ChatPage() {
 
   const activeChannelData = channels.find((c) => c.id === activeChannel);
 
+  const handleChannelAction = async (action: 'hide' | 'leave') => {
+    if (!activeChannel) return;
+    try {
+      if (action === 'hide') {
+        await chatService.hideChannel(slug, activeChannel);
+      } else {
+        await chatService.leaveChannel(slug, activeChannel);
+      }
+      setActiveChannel(null);
+      activeChannelRef.current = null;
+      await fetchChannels();
+    } catch {}
+  };
+
   // Group data for sidebar
   const filteredChannels = channels.filter(c => c.type === 1 && (c.name || "Channel").toLowerCase().includes(search.toLowerCase()));
   
@@ -95,17 +141,33 @@ export default function ChatPage() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-64px)] xl:h-[calc(100vh-88px)] flex-col gap-6 xl:flex-row">
-      <ChatSidebar 
-        search={search} setSearch={setSearch}
-        filteredChannels={filteredChannels} filteredDms={filteredDms} filteredPeople={filteredPeople}
-        activeChannel={activeChannel} openChannel={openChannel} startDirectMessage={startDirectMessage}
-        user={user} timeAgo={timeAgo}
-      />
-      <ChatBox 
-        activeChannelData={activeChannelData} messages={messages} user={user}
-        msgInput={msgInput} setMsgInput={setMsgInput} sendMessage={sendMessage} sending={sending}
-        messagesEndRef={messagesEndRef} timeAgo={timeAgo}
+    <div className="flex h-[calc(100vh-64px)] xl:h-[calc(100vh-88px)] flex-col xl:flex-row xl:gap-6 w-full max-w-full">
+      <div className={`h-full ${activeChannel ? 'hidden xl:block' : 'block'} flex-1 xl:flex-none xl:w-80 2xl:w-96 shrink-0 overflow-hidden`}>
+        <ChatSidebar 
+          search={search} setSearch={setSearch}
+          filteredChannels={filteredChannels} filteredDms={filteredDms} filteredPeople={filteredPeople}
+          activeChannel={activeChannel} openChannel={openChannel} startDirectMessage={startDirectMessage}
+          user={user} timeAgo={timeAgo} onOpenCreateGroup={() => setIsGroupModalOpen(true)}
+        />
+      </div>
+      <div className={`h-full ${!activeChannel ? 'hidden xl:block' : 'block'} flex-1 min-w-0 overflow-hidden`}>
+        <ChatBox 
+          activeChannelData={activeChannelData} messages={messages} user={user}
+          msgInput={msgInput} setMsgInput={setMsgInput} sendMessage={sendMessage} sending={sending}
+          messagesEndRef={messagesEndRef} timeAgo={timeAgo} onBack={() => { setActiveChannel(null); activeChannelRef.current = null; }}
+          onChannelAction={handleChannelAction}
+        />
+      </div>
+      <CreateGroupChatModal
+        isOpen={isGroupModalOpen}
+        onClose={() => setIsGroupModalOpen(false)}
+        members={members}
+        user={user}
+        slug={slug}
+        onCreated={async (id) => {
+          await fetchChannels();
+          openChannel(id);
+        }}
       />
     </div>
   );

@@ -30,7 +30,7 @@ public class ChatController : ControllerBase
 
         var userId = _currentUser.UserId!.Value;
         var channels = await _db.ChatChannels
-            .Where(c => c.WorkspaceId == workspace.Id && c.Members.Any(m => m.UserId == userId))
+            .Where(c => c.WorkspaceId == workspace.Id && c.Members.Any(m => m.UserId == userId && (m.HiddenAt == null || c.Messages.Any(msg => msg.CreatedAt > m.HiddenAt))))
             .Select(c => new
             {
                 c.Id, c.Name, c.Type,
@@ -80,8 +80,14 @@ public class ChatController : ControllerBase
     [HttpGet("channels/{channelId}/messages")]
     public async Task<IActionResult> GetMessages(string workspaceSlug, Guid channelId, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
     {
+        var userId = _currentUser.UserId!.Value;
+        var member = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == userId);
+        if (member == null) return Forbid();
+
+        var hiddenAt = member.HiddenAt;
+
         var messages = await _db.ChatMessages
-            .Where(m => m.ChannelId == channelId && !m.IsDeleted)
+            .Where(m => m.ChannelId == channelId && !m.IsDeleted && (hiddenAt == null || m.CreatedAt > hiddenAt))
             .OrderByDescending(m => m.CreatedAt)
             .Skip(offset)
             .Take(limit)
@@ -93,8 +99,6 @@ public class ChatController : ControllerBase
             .ToListAsync();
 
         // Mark channel as read
-        var userId = _currentUser.UserId!.Value;
-        var member = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == userId);
         if (member != null) { member.LastReadAt = DateTime.UtcNow; await _db.SaveChangesAsync(); }
 
         return Ok(messages);
@@ -123,6 +127,30 @@ public class ChatController : ControllerBase
         if (message == null) return NotFound();
         message.IsDeleted = true;
         message.DeletedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("channels/{channelId}/hide")]
+    public async Task<IActionResult> HideChannel(string workspaceSlug, Guid channelId)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var member = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == userId);
+        if (member == null) return NotFound();
+        
+        member.HiddenAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("channels/{channelId}/leave")]
+    public async Task<IActionResult> LeaveChannel(string workspaceSlug, Guid channelId)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var member = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == userId);
+        if (member == null) return NotFound();
+
+        _db.ChatChannelMembers.Remove(member);
         await _db.SaveChangesAsync();
         return NoContent();
     }

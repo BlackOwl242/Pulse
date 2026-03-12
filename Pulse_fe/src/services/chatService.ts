@@ -21,4 +21,6 @@ export const chatService = {
     sendMessage: (slug: string, channelId: string, content: string, replyToId?: string) =>
         api.post(`/workspaces/${slug}/chat/channels/${channelId}/messages`, { content, replyToId }).then(r => r.data),
     deleteMessage: (slug: string, messageId: string) => api.delete(`/workspaces/${slug}/chat/messages/${messageId}`),
+    hideChannel: (slug: string, channelId: string) => api.delete(`/workspaces/${slug}/chat/channels/${channelId}/hide`),
+    leaveChannel: (slug: string, channelId: string) => api.delete(`/workspaces/${slug}/chat/channels/${channelId}/leave`),
 };
