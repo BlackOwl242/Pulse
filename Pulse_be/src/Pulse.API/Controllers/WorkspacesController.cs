@@ -19,11 +19,13 @@ public class WorkspacesController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
 
-    public WorkspacesController(ApplicationDbContext db, ICurrentUserService currentUser)
+    public WorkspacesController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
     {
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     /// <summary>
@@ -201,6 +203,11 @@ public class WorkspacesController : ControllerBase
         membership.AssignedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
+        // Notify the user about role change
+        var changer = await _db.Users.FindAsync(_currentUser.UserId!.Value);
+        await _notifications.SendAsync(userId, workspace.Id, NotificationType.StatusChanged,
+            $"{changer?.FirstName} changed your role", $"Your role is now {role.Name}", "workspace", workspace.Id, _currentUser.UserId!.Value);
+
         return Ok(new { message = "Role updated", roleId = request.RoleId, roleName = role.Name });
     }
 
@@ -226,7 +233,17 @@ public class WorkspacesController : ControllerBase
         _db.Invitations.Add(invitation);
         await _db.SaveChangesAsync();
 
-        // TODO: Send email via IEmailService
+        // Notify existing workspace members about new invite
+        var inviter = await _db.Users.FindAsync(_currentUser.UserId!.Value);
+        var existingMemberIds = await _db.UserWorkspaceRoles
+            .Where(uwr => uwr.WorkspaceId == workspace.Id && uwr.UserId != _currentUser.UserId!.Value)
+            .Select(uwr => uwr.UserId)
+            .ToListAsync();
+        foreach (var mid in existingMemberIds)
+        {
+            await _notifications.SendAsync(mid, workspace.Id, NotificationType.Invitation,
+                $"{inviter?.FirstName} invited a new member", request.Email, "workspace", workspace.Id, _currentUser.UserId!.Value);
+        }
 
         return Ok(new { message = "Invitation sent", token = invitation.Token });
     }
@@ -308,6 +325,22 @@ public class WorkspacesController : ControllerBase
             RoleId = request.RoleId
         });
         await _db.SaveChangesAsync();
+
+        // Notify the added user
+        var adder = await _db.Users.FindAsync(_currentUser.UserId!.Value);
+        await _notifications.SendAsync(user.Id, workspace.Id, NotificationType.Invitation,
+            $"{adder?.FirstName} added you to {workspace.Name}", $"You now have access to workspace: {workspace.Name}", "workspace", workspace.Id, _currentUser.UserId!.Value);
+
+        // Notify existing workspace members
+        var memberIds = await _db.UserWorkspaceRoles
+            .Where(uwr => uwr.WorkspaceId == workspace.Id && uwr.UserId != _currentUser.UserId!.Value && uwr.UserId != user.Id)
+            .Select(uwr => uwr.UserId)
+            .ToListAsync();
+        foreach (var mid in memberIds)
+        {
+            await _notifications.SendAsync(mid, workspace.Id, NotificationType.Mention,
+                $"{adder?.FirstName} added a new member", $"{user.FirstName} {user.LastName} joined the workspace", "workspace", workspace.Id, _currentUser.UserId!.Value);
+        }
 
         return Ok(new { message = "Member added", userId = user.Id, email = user.Email, firstName = user.FirstName, lastName = user.LastName });
     }

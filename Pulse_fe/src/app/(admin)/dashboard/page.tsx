@@ -83,7 +83,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {greeting}, {firstName} 👋
+            {greeting}, {firstName}
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
@@ -95,7 +95,7 @@ export default function DashboardPage() {
             New Project
           </Link>
           <Link href="/meetings" className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25" /></svg>
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m0 0V18a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-.75M21 11.25H3" /></svg>
             Schedule Meeting
           </Link>
           <Link href="/planner" className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
@@ -103,7 +103,7 @@ export default function DashboardPage() {
             Plan My Day
           </Link>
           <Link href="/ai" className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg text-white bg-brand-500 hover:bg-brand-600 transition-colors">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" /></svg>
             Ask AI
           </Link>
         </div>
@@ -135,13 +135,12 @@ export default function DashboardPage() {
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white">My Tasks</h2>
               {myTasks.length > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 font-medium">{myTasks.length}</span>}
             </div>
-            <Link href="/my-tasks" className="text-xs text-brand-500 hover:text-brand-600 font-medium">View all →</Link>
+            <Link href="/my-tasks" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-medium">View all</Link>
           </div>
           {loading ? <div className="p-6 flex justify-center"><div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>
           : myTasks.length === 0 ? (
             <div className="p-6 text-center">
               <p className="text-sm text-gray-400">No tasks assigned to you</p>
-              <Link href="/projects" className="mt-2 inline-block text-xs text-brand-500 hover:text-brand-600 font-medium">Browse projects →</Link>
             </div>
           ) : (
             <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
@@ -169,12 +168,11 @@ export default function DashboardPage() {
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Upcoming Meetings</h2>
               {meetings.length > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400 font-medium">{meetings.length}</span>}
             </div>
-            <Link href="/meetings" className="text-xs text-brand-500 hover:text-brand-600 font-medium">View all →</Link>
+            <Link href="/meetings" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-medium">View all</Link>
           </div>
           {meetings.length === 0 ? (
             <div className="p-6 text-center">
               <p className="text-sm text-gray-400">No upcoming meetings</p>
-              <Link href="/meetings" className="mt-2 inline-block text-xs text-brand-500 hover:text-brand-600 font-medium">Schedule one →</Link>
             </div>
           ) : (
             <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
@@ -206,12 +204,11 @@ export default function DashboardPage() {
               <div className="w-2 h-2 rounded-full bg-green-500" />
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white">OKR Progress</h2>
             </div>
-            <Link href="/objectives" className="text-xs text-brand-500 hover:text-brand-600 font-medium">View all →</Link>
+            <Link href="/objectives" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-medium">View all</Link>
           </div>
           {objectives.length === 0 ? (
             <div className="p-6 text-center">
               <p className="text-sm text-gray-400">No objectives yet</p>
-              <Link href="/objectives" className="mt-2 inline-block text-xs text-brand-500 hover:text-brand-600 font-medium">Create one →</Link>
             </div>
           ) : (
             <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
@@ -237,12 +234,11 @@ export default function DashboardPage() {
               <div className="w-2 h-2 rounded-full bg-amber-500" />
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Messages</h2>
             </div>
-            <Link href="/chat" className="text-xs text-brand-500 hover:text-brand-600 font-medium">Open chat →</Link>
+            <Link href="/chat" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-medium">Open chat</Link>
           </div>
           {channels.length === 0 ? (
             <div className="p-6 text-center">
               <p className="text-sm text-gray-400">No conversations yet</p>
-              <Link href="/chat" className="mt-2 inline-block text-xs text-brand-500 hover:text-brand-600 font-medium">Start chatting →</Link>
             </div>
           ) : (
             <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
@@ -297,13 +293,13 @@ export default function DashboardPage() {
             </div>
             <div className="p-4 grid grid-cols-2 gap-2">
               {[
-                { label: "Calendar", href: "/calendar", icon: "📅" },
-                { label: "Planner", href: "/planner", icon: "🗓️" },
-                { label: "Reports", href: "/reports", icon: "📊" },
-                { label: "AI Assistant", href: "/ai", icon: "✨" },
+                { label: "Calendar", href: "/calendar", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" className="text-gray-500 dark:text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m0 0V18a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-.75M21 11.25H3" /></svg> },
+                { label: "Planner", href: "/planner", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" className="text-gray-500 dark:text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+                { label: "Reports", href: "/reports", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" className="text-gray-500 dark:text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg> },
+                { label: "AI Assistant", href: "/ai", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" className="text-gray-500 dark:text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> },
               ].map((item) => (
-                <Link key={item.href} href={item.href} className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <span className="text-lg">{item.icon}</span>
+                <Link key={item.href} href={item.href} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-200 dark:hover:border-gray-700 transition-all">
+                  {item.icon}
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{item.label}</span>
                 </Link>
               ))}
@@ -318,14 +314,13 @@ export default function DashboardPage() {
         <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Projects</h2>
-            <Link href="/projects" className="text-xs text-brand-500 hover:text-brand-600 font-medium">View all →</Link>
+            <Link href="/projects" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-medium">View all</Link>
           </div>
           {loading ? (
             <div className="p-6 flex justify-center"><div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>
           ) : projects.length === 0 ? (
             <div className="p-6 text-center">
               <p className="text-sm text-gray-400">No projects yet</p>
-              <Link href="/projects" className="mt-2 inline-block text-xs text-brand-500 hover:text-brand-600 font-medium">Create one →</Link>
             </div>
           ) : (
             <div className="divide-y divide-gray-50 dark:divide-gray-800/50">

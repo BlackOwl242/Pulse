@@ -5,6 +5,7 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { notificationService, NotificationItem } from "@/services/notificationService";
 import { connectNotifications } from "@/lib/socket";
+import { useToast } from "@/components/ui/toast/ToastProvider";
 
 const NOTIF_LABELS: Record<number, string> = {
   0: "mentioned you",
@@ -33,6 +34,7 @@ export default function NotificationDropdown() {
   const [unreadCount, setUnreadCount] = useState(0);
   const slug = "pulse-demo";
   const connectedRef = useRef(false);
+  const { showToast } = useToast();
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -62,6 +64,8 @@ export default function NotificationDropdown() {
         };
         setNotifications((prev) => [notif, ...prev]);
         setUnreadCount((c) => c + 1);
+        // Show toast popup
+        showToast(data.title ?? NOTIF_LABELS[data.type] ?? "New notification", data.content);
       }).catch(console.error);
     }
   }, [fetchNotifications]);

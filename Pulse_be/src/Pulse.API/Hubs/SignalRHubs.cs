@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Pulse.API.Data;
 
 namespace Pulse.API.Hubs;
 
@@ -30,6 +32,33 @@ public class NotificationHub : Hub
 [Authorize]
 public class ChatHub : Hub
 {
+    private readonly ApplicationDbContext _db;
+
+    public ChatHub(ApplicationDbContext db)
+    {
+        _db = db;
+    }
+
+    // Auto-join ALL the user's channels on connect so they receive messages
+    // even for channels they've hidden (allows channel to reappear on new message)
+    public override async Task OnConnectedAsync()
+    {
+        var userIdStr = Context.UserIdentifier;
+        if (userIdStr != null && Guid.TryParse(userIdStr, out var userId))
+        {
+            var channelIds = await _db.ChatChannelMembers
+                .Where(m => m.UserId == userId)
+                .Select(m => m.ChannelId.ToString())
+                .ToListAsync();
+
+            foreach (var channelId in channelIds)
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"channel_{channelId}");
+            }
+        }
+        await base.OnConnectedAsync();
+    }
+
     public async Task JoinChannel(string channelId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, $"channel_{channelId}");

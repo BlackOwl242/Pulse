@@ -86,9 +86,8 @@ export default function ChatPage() {
     if (activeChannel) {
       joinChatChannel(activeChannel).catch(console.error);
     }
-    return () => {
-      if (activeChannel) leaveChatChannel(activeChannel).catch(console.error);
-    };
+    // Don't leave channel groups — stay subscribed so we receive messages
+    // even for hidden channels (allows them to reappear on new messages)
   }, [activeChannel]);
 
   const openChannel = async (channelId: string) => {
@@ -158,13 +157,19 @@ export default function ChatPage() {
 
   const activeChannelData = channels.find((c) => c.id === activeChannel);
 
-  const handleChannelAction = async (action: 'hide' | 'leave') => {
+  const handleChannelAction = async (action: 'hide' | 'leave' | 'delete-channel' | 'kick-all') => {
     if (!activeChannel) return;
     try {
       if (action === 'hide') {
         await chatService.hideChannel(slug, activeChannel);
-      } else {
+      } else if (action === 'leave') {
         await chatService.leaveChannel(slug, activeChannel);
+      } else if (action === 'delete-channel') {
+        if (!confirm("Delete this chat for everyone? All messages will be permanently deleted.")) return;
+        await chatService.deleteChannel(slug, activeChannel);
+      } else if (action === 'kick-all') {
+        if (!confirm("Remove all members from this group?")) return;
+        await chatService.kickAll(slug, activeChannel);
       }
       setActiveChannel(null);
       activeChannelRef.current = null;

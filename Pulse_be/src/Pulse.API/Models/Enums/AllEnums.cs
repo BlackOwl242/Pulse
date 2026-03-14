@@ -10,8 +10,9 @@ public enum ProjectStatus { Active, Archived, Completed }
 
 public enum ChannelType { Direct, Group, Task }
 public enum MessageType { Text, File, System }
-public enum NotificationType { Mention, TaskAssigned, Deadline, Comment, Invitation, StatusChanged }
+public enum NotificationType { Mention, TaskAssigned, Deadline, Comment, Invitation, StatusChanged, Message }
 public enum NotificationChannel { InApp, Email, Push }
+public enum ChannelMemberRole { Member, Admin, Creator }
 
 public enum PlannerBlockType { Task, Meeting, Personal, Break }
 public enum CalendarEventSource { Internal, Google }

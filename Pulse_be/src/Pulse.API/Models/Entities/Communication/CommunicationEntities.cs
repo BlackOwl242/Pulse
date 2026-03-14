@@ -5,7 +5,7 @@ using Pulse.API.Models.Entities.Organization;
 
 namespace Pulse.API.Models.Entities.Communication;
 
-public class ChatChannel : BaseEntity
+public class ChatChannel : BaseEntity, ISoftDeletable
 {
     public Guid WorkspaceId { get; set; }
     public Workspace Workspace { get; set; } = null!;
@@ -20,6 +20,10 @@ public class ChatChannel : BaseEntity
 
     // Self-destruct timer (seconds). null = off
     public int? SelfDestructSeconds { get; set; }
+
+    // Soft delete
+    public DateTime? DeletedAt { get; set; }
+    public bool IsDeleted { get; set; }
 }
 
 public class ChatChannelMember
@@ -32,6 +36,7 @@ public class ChatChannelMember
     public DateTime? LastReadAt { get; set; }
     public bool IsMuted { get; set; }
     public DateTime? HiddenAt { get; set; }
+    public ChannelMemberRole Role { get; set; } = ChannelMemberRole.Member;
 }
 
 public class ChatMessage : BaseEntity, ISoftDeletable

@@ -15,11 +15,13 @@ public class MeetingsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
 
-    public MeetingsController(ApplicationDbContext db, ICurrentUserService currentUser)
+    public MeetingsController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
     {
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     [HttpGet]
@@ -78,6 +80,18 @@ public class MeetingsController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+
+        // Notify all invited participants
+        var organizer = await _db.Users.FindAsync(userId);
+        foreach (var pid in req.ParticipantIds ?? new List<Guid>())
+        {
+            if (pid != userId)
+            {
+                await _notifications.SendAsync(pid, workspace.Id, NotificationType.Invitation,
+                    $"{organizer?.FirstName} invited you to a meeting", meeting.Title, "meeting", meeting.Id, userId);
+            }
+        }
+
         return Ok(new { meeting.Id, meeting.Title, meeting.ProposedStartTime, meeting.Status });
     }
 

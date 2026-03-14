@@ -19,13 +19,15 @@ public class ChatController : ControllerBase
     private readonly ICurrentUserService _currentUser;
     private readonly IHubContext<ChatHub> _chatHub;
     private readonly IWebHostEnvironment _env;
+    private readonly INotificationService _notifications;
 
-    public ChatController(ApplicationDbContext db, ICurrentUserService currentUser, IHubContext<ChatHub> chatHub, IWebHostEnvironment env)
+    public ChatController(ApplicationDbContext db, ICurrentUserService currentUser, IHubContext<ChatHub> chatHub, IWebHostEnvironment env, INotificationService notifications)
     {
         _db = db;
         _currentUser = currentUser;
         _chatHub = chatHub;
         _env = env;
+        _notifications = notifications;
     }
 
     [HttpGet("channels")]
@@ -36,10 +38,10 @@ public class ChatController : ControllerBase
 
         var userId = _currentUser.UserId!.Value;
         var channels = await _db.ChatChannels
-            .Where(c => c.WorkspaceId == workspace.Id && c.Members.Any(m => m.UserId == userId && (m.HiddenAt == null || c.Messages.Any(msg => msg.CreatedAt > m.HiddenAt))))
+            .Where(c => c.WorkspaceId == workspace.Id && !c.IsDeleted && c.Members.Any(m => m.UserId == userId && (m.HiddenAt == null || c.Messages.Any(msg => msg.CreatedAt > m.HiddenAt))))
             .Select(c => new
             {
-                c.Id, c.Name, c.Type, c.SelfDestructSeconds,
+                c.Id, c.Name, c.Type, c.SelfDestructSeconds, c.CreatedById,
                 LastMessage = c.Messages.OrderByDescending(m => m.CreatedAt).Select(m => new
                 {
                     m.Content, m.CreatedAt,
@@ -70,8 +72,8 @@ public class ChatController : ControllerBase
         };
         _db.ChatChannels.Add(channel);
 
-        // Add creator
-        _db.ChatChannelMembers.Add(new ChatChannelMember { ChannelId = channel.Id, UserId = userId });
+        // Add creator with Creator role
+        _db.ChatChannelMembers.Add(new ChatChannelMember { ChannelId = channel.Id, UserId = userId, Role = ChannelMemberRole.Creator });
 
         // Add members
         foreach (var mid in req.MemberIds ?? new List<Guid>())
@@ -356,6 +358,23 @@ public class ChatController : ControllerBase
                 readByCount = 0
             });
 
+        // Send notifications to all other channel members
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace != null)
+        {
+            var otherMemberIds = await _db.ChatChannelMembers
+                .Where(m => m.ChannelId == channelId && m.UserId != userId)
+                .Select(m => m.UserId)
+                .ToListAsync();
+
+            var preview = string.IsNullOrEmpty(req.Content) ? "sent an attachment" : req.Content.Length > 50 ? req.Content[..50] + "..." : req.Content;
+            foreach (var memberId in otherMemberIds)
+            {
+                await _notifications.SendAsync(memberId, workspace.Id, NotificationType.Message,
+                    $"{sender?.FirstName} sent a message", preview, "channel", channelId, userId);
+            }
+        }
+
         return Ok(new { message.Id, message.Content, message.CreatedAt });
     }
 
@@ -393,6 +412,123 @@ public class ChatController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
+    // ─── Admin: Get members with roles ───
+    [HttpGet("channels/{channelId}/members")]
+    public async Task<IActionResult> GetChannelMembers(string workspaceSlug, Guid channelId)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var isMember = await _db.ChatChannelMembers.AnyAsync(m => m.ChannelId == channelId && m.UserId == userId);
+        if (!isMember) return Forbid();
+
+        var channel = await _db.ChatChannels.FindAsync(channelId);
+        var members = await _db.ChatChannelMembers
+            .Where(m => m.ChannelId == channelId)
+            .Select(m => new {
+                m.UserId,
+                m.User.FirstName,
+                m.User.LastName,
+                m.User.AvatarUrl,
+                Role = m.Role.ToString().ToLower(),
+                m.JoinedAt
+            }).ToListAsync();
+
+        return Ok(new { createdById = channel?.CreatedById, members });
+    }
+
+    // ─── Admin: Kick a member ───
+    [HttpDelete("channels/{channelId}/members/{targetUserId}")]
+    public async Task<IActionResult> KickMember(string workspaceSlug, Guid channelId, Guid targetUserId)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var caller = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == userId);
+        if (caller == null || caller.Role == ChannelMemberRole.Member) return Forbid();
+
+        var target = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == targetUserId);
+        if (target == null) return NotFound();
+        if (target.Role == ChannelMemberRole.Creator) return BadRequest(new { message = "Cannot kick the creator" });
+        if (target.Role == ChannelMemberRole.Admin && caller.Role != ChannelMemberRole.Creator)
+            return BadRequest(new { message = "Only creator can kick admins" });
+
+        _db.ChatChannelMembers.Remove(target);
+        await _db.SaveChangesAsync();
+
+        // Notify kicked user
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace != null)
+        {
+            var kickerName = (await _db.Users.FindAsync(userId))?.FirstName;
+            await _notifications.SendAsync(targetUserId, workspace.Id, NotificationType.Mention,
+                $"{kickerName} removed you from a chat", "", "channel", channelId, userId);
+        }
+
+        return NoContent();
+    }
+
+    // ─── Admin: Set member role (creator only) ───
+    [HttpPut("channels/{channelId}/members/{targetUserId}/role")]
+    public async Task<IActionResult> SetMemberRole(string workspaceSlug, Guid channelId, Guid targetUserId, [FromBody] SetRoleRequest req)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var caller = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == userId);
+        if (caller == null || caller.Role != ChannelMemberRole.Creator) return Forbid();
+
+        var target = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == targetUserId);
+        if (target == null) return NotFound();
+        if (target.Role == ChannelMemberRole.Creator) return BadRequest(new { message = "Cannot change creator role" });
+
+        target.Role = req.Role;
+        await _db.SaveChangesAsync();
+        return Ok(new { targetUserId, role = req.Role.ToString().ToLower() });
+    }
+
+    // ─── Admin: Delete channel for everyone (creator only) ───
+    [HttpDelete("channels/{channelId}")]
+    public async Task<IActionResult> DeleteChannel(string workspaceSlug, Guid channelId)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var caller = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == userId);
+        if (caller == null || caller.Role != ChannelMemberRole.Creator) return Forbid();
+
+        // Soft-delete all messages
+        await _db.ChatMessages
+            .Where(m => m.ChannelId == channelId && !m.IsDeleted)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(m => m.IsDeleted, true)
+                .SetProperty(m => m.DeletedAt, DateTime.UtcNow));
+
+        // Remove all members
+        var members = await _db.ChatChannelMembers.Where(m => m.ChannelId == channelId).ToListAsync();
+        _db.ChatChannelMembers.RemoveRange(members);
+
+        // Soft-delete channel
+        var channel = await _db.ChatChannels.FindAsync(channelId);
+        if (channel != null)
+        {
+            channel.IsDeleted = true;
+            channel.DeletedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // ─── Admin: Kick all members (creator only) ───
+    [HttpPost("channels/{channelId}/kick-all")]
+    public async Task<IActionResult> KickAllMembers(string workspaceSlug, Guid channelId)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var caller = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == userId);
+        if (caller == null || caller.Role != ChannelMemberRole.Creator) return Forbid();
+
+        var toRemove = await _db.ChatChannelMembers
+            .Where(m => m.ChannelId == channelId && m.UserId != userId)
+            .ToListAsync();
+
+        _db.ChatChannelMembers.RemoveRange(toRemove);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
 }
 
 public class CreateChannelRequest
@@ -419,4 +555,9 @@ public class SetDestructTimerRequest
 public class MarkReadRequest
 {
     public List<Guid> MessageIds { get; set; } = new();
+}
+
+public class SetRoleRequest
+{
+    public ChannelMemberRole Role { get; set; }
 }

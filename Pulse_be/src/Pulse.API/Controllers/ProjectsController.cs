@@ -13,11 +13,13 @@ public class ProjectsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
 
-    public ProjectsController(ApplicationDbContext db, ICurrentUserService currentUser)
+    public ProjectsController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
     {
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     [HttpGet]
@@ -79,6 +81,18 @@ public class ProjectsController : ControllerBase
 
         _db.Projects.Add(project);
         await _db.SaveChangesAsync();
+
+        // Notify all workspace members about new project
+        var creator = await _db.Users.FindAsync(_currentUser.UserId!.Value);
+        var memberIds = await _db.UserWorkspaceRoles
+            .Where(m => m.WorkspaceId == workspace.Id && m.UserId != _currentUser.UserId!.Value)
+            .Select(m => m.UserId)
+            .ToListAsync();
+        foreach (var mid in memberIds)
+        {
+            await _notifications.SendAsync(mid, workspace.Id, Models.Enums.NotificationType.Mention,
+                $"{creator?.FirstName} created a new project", project.Name, "project", project.Id, _currentUser.UserId!.Value);
+        }
 
         return CreatedAtAction(nameof(GetById), new { workspaceSlug, projectId = project.Id }, new
         {

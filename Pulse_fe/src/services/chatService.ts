@@ -3,9 +3,15 @@ import api from './api';
 export interface ChatChannel {
     id: string; name?: string; type: number;
     selfDestructSeconds?: number | null;
+    createdById?: string;
     lastMessage?: { content: string; createdAt: string; sender: { firstName: string; lastName: string }; status?: 'sent' | 'seen' };
     memberCount: number; unreadCount: number;
     members?: { userId: string; firstName: string; lastName: string; avatarUrl?: string }[];
+}
+
+export interface ChannelMember {
+    userId: string; firstName: string; lastName: string; avatarUrl?: string;
+    role: 'creator' | 'admin' | 'member'; joinedAt: string;
 }
 
 export interface ChatMessage {
@@ -51,4 +57,15 @@ export const chatService = {
     deleteMessage: (slug: string, messageId: string) => api.delete(`/workspaces/${slug}/chat/messages/${messageId}`),
     hideChannel: (slug: string, channelId: string) => api.delete(`/workspaces/${slug}/chat/channels/${channelId}/hide`),
     leaveChannel: (slug: string, channelId: string) => api.delete(`/workspaces/${slug}/chat/channels/${channelId}/leave`),
+    // Admin
+    getMembers: (slug: string, channelId: string) =>
+        api.get<{ createdById: string; members: ChannelMember[] }>(`/workspaces/${slug}/chat/channels/${channelId}/members`).then(r => r.data),
+    kickMember: (slug: string, channelId: string, userId: string) =>
+        api.delete(`/workspaces/${slug}/chat/channels/${channelId}/members/${userId}`),
+    setMemberRole: (slug: string, channelId: string, userId: string, role: number) =>
+        api.put(`/workspaces/${slug}/chat/channels/${channelId}/members/${userId}/role`, { role }),
+    deleteChannel: (slug: string, channelId: string) =>
+        api.delete(`/workspaces/${slug}/chat/channels/${channelId}`),
+    kickAll: (slug: string, channelId: string) =>
+        api.post(`/workspaces/${slug}/chat/channels/${channelId}/kick-all`),
 };
