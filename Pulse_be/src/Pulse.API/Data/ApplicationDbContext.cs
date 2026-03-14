@@ -63,6 +63,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChatChannel> ChatChannels => Set<ChatChannel>();
     public DbSet<ChatChannelMember> ChatChannelMembers => Set<ChatChannelMember>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<MessageReadReceipt> MessageReadReceipts => Set<MessageReadReceipt>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
 
@@ -227,6 +228,14 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(m => m.ReplyToId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MessageReadReceipt>(e =>
+        {
+            e.HasKey(r => new { r.MessageId, r.UserId });
+            e.HasOne(r => r.Message)
+                .WithMany(m => m.ReadReceipts)
+                .HasForeignKey(r => r.MessageId);
         });
 
         // ===== Module 6: Strategy =====

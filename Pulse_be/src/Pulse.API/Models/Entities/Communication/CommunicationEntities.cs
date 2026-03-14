@@ -55,8 +55,20 @@ public class ChatMessage : BaseEntity, ISoftDeletable
     public DateTime? DeletedAt { get; set; }
     public bool IsDeleted { get; set; }
 
-    // Self-destruct: set when first non-sender views the message
+    // Self-destruct: set when ALL non-sender members have viewed the message
     public DateTime? DeleteAfterAt { get; set; }
+
+    // Read receipts
+    public ICollection<MessageReadReceipt> ReadReceipts { get; set; } = new List<MessageReadReceipt>();
+}
+
+public class MessageReadReceipt
+{
+    public Guid MessageId { get; set; }
+    public ChatMessage Message { get; set; } = null!;
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+    public DateTime ReadAt { get; set; } = DateTime.UtcNow;
 }
 
 public class Notification : BaseEntity

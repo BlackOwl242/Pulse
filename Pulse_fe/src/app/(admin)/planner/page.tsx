@@ -124,7 +124,7 @@ export default function PlannerPage() {
   const sortedBlocks = [...blocks].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto min-h-[calc(100vh-64px)]">
+    <div className="p-4 sm:p-6 min-h-[calc(100vh-64px)]">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

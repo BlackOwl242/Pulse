@@ -41,7 +41,9 @@ export async function connectNotifications(
 export async function connectChat(
     onMessage: (message: unknown) => void,
     onTyping?: (data: unknown) => void,
-    onMessagesDeleted?: (ids: string[]) => void
+    onMessagesDeleted?: (ids: string[]) => void,
+    onMessageStatusUpdated?: (updates: { messageId: string; status: string; readByCount: number }[]) => void,
+    onMessagesDestructStarted?: (data: { messageIds: string[]; deleteAt: string }) => void
 ): Promise<signalR.HubConnection> {
     if (!chatConnection) {
         chatConnection = createConnection('chat');
@@ -50,6 +52,8 @@ export async function connectChat(
     chatConnection.off('ReceiveMessage');
     chatConnection.off('UserTyping');
     chatConnection.off('MessagesDeleted');
+    chatConnection.off('MessageStatusUpdated');
+    chatConnection.off('MessagesDestructStarted');
 
     chatConnection.on('ReceiveMessage', onMessage);
     if (onTyping) {
@@ -57,6 +61,12 @@ export async function connectChat(
     }
     if (onMessagesDeleted) {
         chatConnection.on('MessagesDeleted', onMessagesDeleted);
+    }
+    if (onMessageStatusUpdated) {
+        chatConnection.on('MessageStatusUpdated', onMessageStatusUpdated);
+    }
+    if (onMessagesDestructStarted) {
+        chatConnection.on('MessagesDestructStarted', onMessagesDestructStarted);
     }
 
     if (chatConnection.state === signalR.HubConnectionState.Disconnected) {

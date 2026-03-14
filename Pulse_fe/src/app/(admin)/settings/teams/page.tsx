@@ -63,7 +63,7 @@ export default function TeamsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto min-h-[calc(100vh-64px)]">
+    <div className="p-4 sm:p-6 min-h-[calc(100vh-64px)]">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Teams</h1>

@@ -46,6 +46,11 @@ export default function ChatPage() {
             return [...prev, data as ChatMessage];
           });
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+          
+          // Auto mark-as-read for non-sender messages
+          if (data.sender?.id !== user?.id) {
+            chatService.markAsRead(slug, data.channelId, [data.id]).catch(() => {});
+          }
         }
         fetchChannels();
       },
@@ -54,6 +59,23 @@ export default function ChatPage() {
       (deletedIds: string[]) => {
         if (!mounted) return;
         setMessages(prev => prev.filter(m => !deletedIds.includes(m.id)));
+      },
+      // MessageStatusUpdated: update status in local state
+      (updates: { messageId: string; status: string; readByCount: number }[]) => {
+        if (!mounted) return;
+        setMessages(prev => prev.map(m => {
+          const update = updates.find(u => u.messageId === m.id);
+          if (update) return { ...m, status: update.status as 'sent' | 'seen', readByCount: update.readByCount };
+          return m;
+        }));
+      },
+      // MessagesDestructStarted: update deleteAfterAt
+      (data: { messageIds: string[]; deleteAt: string }) => {
+        if (!mounted) return;
+        setMessages(prev => prev.map(m => {
+          if (data.messageIds.includes(m.id)) return { ...m, deleteAfterAt: data.deleteAt };
+          return m;
+        }));
       }
     ).catch(console.error);
 
@@ -74,9 +96,16 @@ export default function ChatPage() {
     activeChannelRef.current = channelId;
     try {
       const msgs = await chatService.getMessages(slug, channelId);
-      setMessages(msgs.reverse());
+      const reversed = msgs.reverse();
+      setMessages(reversed);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      
+      // Mark non-sender messages as read
+      const nonSenderMsgIds = reversed.filter(m => m.sender.id !== user?.id && m.type !== 2).map(m => m.id);
+      if (nonSenderMsgIds.length > 0) {
+        chatService.markAsRead(slug, channelId, nonSenderMsgIds).catch(() => {});
+      }
     } catch {}
   };
 

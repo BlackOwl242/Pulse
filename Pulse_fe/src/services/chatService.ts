@@ -3,7 +3,7 @@ import api from './api';
 export interface ChatChannel {
     id: string; name?: string; type: number;
     selfDestructSeconds?: number | null;
-    lastMessage?: { content: string; createdAt: string; sender: { firstName: string; lastName: string } };
+    lastMessage?: { content: string; createdAt: string; sender: { firstName: string; lastName: string }; status?: 'sent' | 'seen' };
     memberCount: number; unreadCount: number;
     members?: { userId: string; firstName: string; lastName: string; avatarUrl?: string }[];
 }
@@ -15,6 +15,8 @@ export interface ChatMessage {
     attachmentName?: string;
     attachmentType?: string;
     deleteAfterAt?: string | null;
+    status?: 'sent' | 'seen';
+    readByCount?: number;
 }
 
 export interface SendMessagePayload {
@@ -44,6 +46,8 @@ export const chatService = {
     },
     setDestructTimer: (slug: string, channelId: string, seconds: number | null) =>
         api.put(`/workspaces/${slug}/chat/channels/${channelId}/destruct-timer`, { seconds }).then(r => r.data),
+    markAsRead: (slug: string, channelId: string, messageIds: string[]) =>
+        api.post(`/workspaces/${slug}/chat/channels/${channelId}/mark-read`, { messageIds }).then(r => r.data),
     deleteMessage: (slug: string, messageId: string) => api.delete(`/workspaces/${slug}/chat/messages/${messageId}`),
     hideChannel: (slug: string, channelId: string) => api.delete(`/workspaces/${slug}/chat/channels/${channelId}/hide`),
     leaveChannel: (slug: string, channelId: string) => api.delete(`/workspaces/${slug}/chat/channels/${channelId}/leave`),

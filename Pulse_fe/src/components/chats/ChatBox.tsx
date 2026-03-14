@@ -156,9 +156,27 @@ export default function ChatBox({ activeChannelData, messages, user, msgInput, s
                   {chat.attachmentUrl && <MessageAttachment url={chat.attachmentUrl} name={chat.attachmentName} type={chat.attachmentType} />}
                 </div>
                 <div className={`mt-1 flex flex-col ${isSender ? "items-end" : "items-start"}`}>
-                  <p className="text-gray-500 text-theme-xs dark:text-gray-400">
-                    {isSender ? timeAgo(chat.createdAt) : `${chat.sender.firstName}, ${timeAgo(chat.createdAt)}`}
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-gray-500 text-theme-xs dark:text-gray-400">
+                      {isSender ? timeAgo(chat.createdAt) : `${chat.sender.firstName}, ${timeAgo(chat.createdAt)}`}
+                    </p>
+                    {isSender && (
+                      <span className={`inline-flex items-center ${chat.status === 'seen' ? 'text-brand-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                        {chat.status === 'seen' ? (
+                          /* Double check — seen */
+                          <svg width="16" height="12" viewBox="0 0 24 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="1 8 6 13 14 3" />
+                            <polyline points="7 8 12 13 20 3" />
+                          </svg>
+                        ) : (
+                          /* Single check — sent */
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="4 12 9 17 20 6" />
+                          </svg>
+                        )}
+                      </span>
+                    )}
+                  </div>
                   {!isSender && chat.deleteAfterAt && <DestructCountdown deleteAfterAt={chat.deleteAfterAt} />}
                 </div>
               </div>

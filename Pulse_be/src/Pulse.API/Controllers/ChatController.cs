@@ -43,7 +43,8 @@ public class ChatController : ControllerBase
                 LastMessage = c.Messages.OrderByDescending(m => m.CreatedAt).Select(m => new
                 {
                     m.Content, m.CreatedAt,
-                    Sender = new { m.Sender.FirstName, m.Sender.LastName }
+                    Sender = new { m.Sender.FirstName, m.Sender.LastName },
+                    Status = m.ReadReceipts.Any(r => r.UserId != m.SenderId) ? "seen" : "sent"
                 }).FirstOrDefault(),
                 MemberCount = c.Members.Count,
                 UnreadCount = c.Messages.Count(m => m.SenderId != userId && m.CreatedAt > (c.Members.First(mb => mb.UserId == userId).LastReadAt ?? DateTime.MinValue)),
@@ -102,34 +103,104 @@ public class ChatController : ControllerBase
                 m.Id, m.Content, m.Type, m.CreatedAt, m.IsEdited, m.ReplyToId,
                 m.AttachmentUrl, m.AttachmentName, m.AttachmentType,
                 m.DeleteAfterAt,
-                Sender = new { m.Sender.Id, m.Sender.FirstName, m.Sender.LastName, m.Sender.AvatarUrl }
+                Sender = new { m.Sender.Id, m.Sender.FirstName, m.Sender.LastName, m.Sender.AvatarUrl },
+                Status = m.ReadReceipts.Any(r => r.UserId != m.SenderId) ? "seen" : "sent",
+                ReadByCount = m.ReadReceipts.Count(r => r.UserId != m.SenderId)
             })
             .ToListAsync();
 
         // Mark channel as read
         member.LastReadAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(messages);
+    }
 
-        // Self-destruct: for messages this user can see that were sent by someone else,
-        // start the timer if not already started
-        var channel = await _db.ChatChannels.FindAsync(channelId);
+    // ─── Mark messages as read ───
+    [HttpPost("channels/{channelId}/mark-read")]
+    public async Task<IActionResult> MarkAsRead(string workspaceSlug, Guid channelId, [FromBody] MarkReadRequest req)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var member = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == userId);
+        if (member == null) return Forbid();
+
+        if (req.MessageIds == null || req.MessageIds.Count == 0)
+            return Ok();
+
+        // Get existing receipts for this user to avoid duplicates
+        var existingReceipts = await _db.MessageReadReceipts
+            .Where(r => req.MessageIds.Contains(r.MessageId) && r.UserId == userId)
+            .Select(r => r.MessageId)
+            .ToListAsync();
+
+        var newIds = req.MessageIds.Except(existingReceipts).ToList();
+        if (newIds.Count == 0) return Ok();
+
+        foreach (var msgId in newIds)
+        {
+            _db.MessageReadReceipts.Add(new MessageReadReceipt
+            {
+                MessageId = msgId,
+                UserId = userId
+            });
+        }
+        await _db.SaveChangesAsync();
+
+        // Broadcast status updates via SignalR
+        var updatedStatuses = await _db.ChatMessages
+            .Where(m => newIds.Contains(m.Id))
+            .Select(m => new
+            {
+                MessageId = m.Id,
+                Status = m.ReadReceipts.Any(r => r.UserId != m.SenderId) ? "seen" : "sent",
+                ReadByCount = m.ReadReceipts.Count(r => r.UserId != m.SenderId)
+            })
+            .ToListAsync();
+
+        await _chatHub.Clients.Group($"channel_{channelId}")
+            .SendAsync("MessageStatusUpdated", updatedStatuses);
+
+        // Self-destruct: check if ALL non-sender members have read — start timer
+        var channel = await _db.ChatChannels.Include(c => c.Members).FirstOrDefaultAsync(c => c.Id == channelId);
         if (channel?.SelfDestructSeconds != null)
         {
-            var msgIds = messages
-                .Where(m => m.Sender.Id != userId && m.DeleteAfterAt == null)
+            var nonSenderMsgIds = await _db.ChatMessages
+                .Where(m => newIds.Contains(m.Id) && m.SenderId != userId && m.DeleteAfterAt == null)
                 .Select(m => m.Id)
-                .ToList();
+                .ToListAsync();
 
-            if (msgIds.Any())
+            if (nonSenderMsgIds.Count > 0)
             {
-                var deleteAt = DateTime.UtcNow.AddSeconds(channel.SelfDestructSeconds.Value);
-                await _db.ChatMessages
-                    .Where(m => msgIds.Contains(m.Id))
-                    .ExecuteUpdateAsync(s => s.SetProperty(m => m.DeleteAfterAt, deleteAt));
+                var totalNonSenderMembers = channel.Members.Count; // all members count (we check per-message below)
+                var readyToDeleteIds = new List<Guid>();
+
+                foreach (var msgId in nonSenderMsgIds)
+                {
+                    var msg = await _db.ChatMessages.FindAsync(msgId);
+                    if (msg == null) continue;
+
+                    // Count of non-sender members for this specific message
+                    var nonSenderMemberCount = channel.Members.Count(m => m.UserId != msg.SenderId);
+                    var readCount = await _db.MessageReadReceipts.CountAsync(r => r.MessageId == msgId && r.UserId != msg.SenderId);
+
+                    if (readCount >= nonSenderMemberCount)
+                        readyToDeleteIds.Add(msgId);
+                }
+
+                if (readyToDeleteIds.Count > 0)
+                {
+                    var deleteAt = DateTime.UtcNow.AddSeconds(channel.SelfDestructSeconds.Value);
+                    await _db.ChatMessages
+                        .Where(m => readyToDeleteIds.Contains(m.Id))
+                        .ExecuteUpdateAsync(s => s.SetProperty(m => m.DeleteAfterAt, deleteAt));
+
+                    // Notify channel about the destruct timer
+                    await _chatHub.Clients.Group($"channel_{channelId}")
+                        .SendAsync("MessagesDestructStarted", new { messageIds = readyToDeleteIds, deleteAt });
+                }
             }
         }
 
-        await _db.SaveChangesAsync();
-        return Ok(messages);
+        return Ok();
     }
 
     // ─── Self-destruct timer endpoint ───
@@ -280,7 +351,9 @@ public class ChatController : ControllerBase
                 attachmentUrl = message.AttachmentUrl,
                 attachmentName = message.AttachmentName,
                 attachmentType = message.AttachmentType,
-                sender = sender
+                sender = sender,
+                status = "sent",
+                readByCount = 0
             });
 
         return Ok(new { message.Id, message.Content, message.CreatedAt });
@@ -341,4 +414,9 @@ public class SendMessageRequest
 public class SetDestructTimerRequest
 {
     public int? Seconds { get; set; }
+}
+
+public class MarkReadRequest
+{
+    public List<Guid> MessageIds { get; set; } = new();
 }
