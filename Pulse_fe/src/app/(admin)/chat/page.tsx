@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { chatService, ChatChannel, ChatMessage } from "@/services/chatService";
+import { chatService, ChatChannel, ChatMessage, SendMessagePayload } from "@/services/chatService";
 import { roleService } from "@/services/roleService";
 import { WorkspaceMember } from "@/types/roles";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -37,20 +37,27 @@ export default function ChatPage() {
     fetchChannels(); 
     
     let mounted = true;
-    connectChat((data: any) => {
-      if (activeChannelRef.current === data.channelId) {
-        chatService.getMessages(slug, data.channelId).then(msgs => {
-          if (mounted) {
-            setMessages(msgs.reverse());
-            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-          }
-        }).catch(console.error);
+    connectChat(
+      (data: any) => {
+        if (!mounted) return;
+        if (activeChannelRef.current === data.channelId) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === data.id)) return prev;
+            return [...prev, data as ChatMessage];
+          });
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+        }
+        fetchChannels();
+      },
+      undefined,
+      // MessagesDeleted: remove from UI immediately
+      (deletedIds: string[]) => {
+        if (!mounted) return;
+        setMessages(prev => prev.filter(m => !deletedIds.includes(m.id)));
       }
-    }).catch(console.error);
+    ).catch(console.error);
 
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [fetchChannels]);
 
   useEffect(() => {
@@ -90,17 +97,27 @@ export default function ChatPage() {
     } catch {}
   };
 
-  const sendMessage = async () => {
-    if (!msgInput.trim() || !activeChannel) return;
+  const sendMessage = async (payload: SendMessagePayload) => {
+    if (!payload.content.trim() && !payload.attachmentUrl) return;
+    if (!activeChannel) return;
     setSending(true);
+    setMsgInput("");
     try {
-      await chatService.sendMessage(slug, activeChannel, msgInput);
-      setMsgInput("");
-      const msgs = await chatService.getMessages(slug, activeChannel);
-      setMessages(msgs.reverse());
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-    } catch {}
+      await chatService.sendMessage(slug, activeChannel, payload);
+      // SignalR ReceiveMessage event will append the message for both sender and receiver
+    } catch {
+      if (payload.content) setMsgInput(payload.content);
+    }
     setSending(false);
+  };
+
+  const handleSetDestructTimer = async (seconds: number | null) => {
+    if (!activeChannel) return;
+    try {
+      await chatService.setDestructTimer(slug, activeChannel, seconds);
+      // Refresh channels so selfDestructSeconds is updated in activeChannelData
+      await fetchChannels();
+    } catch {}
   };
 
   const timeAgo = (d: string) => {
@@ -156,6 +173,8 @@ export default function ChatPage() {
           msgInput={msgInput} setMsgInput={setMsgInput} sendMessage={sendMessage} sending={sending}
           messagesEndRef={messagesEndRef} timeAgo={timeAgo} onBack={() => { setActiveChannel(null); activeChannelRef.current = null; }}
           onChannelAction={handleChannelAction}
+          onSetDestructTimer={handleSetDestructTimer}
+          slug={slug}
         />
       </div>
       <CreateGroupChatModal

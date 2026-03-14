@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pulse.API.Data;
 using Pulse.API.Models.Entities.TaskManagement;
+using Pulse.API.Models.Enums;
 using Pulse.API.Services.Interfaces;
 
 namespace Pulse.API.Controllers;
@@ -14,11 +15,13 @@ public class CommentsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
 
-    public CommentsController(ApplicationDbContext db, ICurrentUserService currentUser)
+    public CommentsController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
     {
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     /// <summary>
@@ -97,6 +100,33 @@ public class CommentsController : ControllerBase
                 }
             })
             .FirstAsync();
+
+        // Notify task creator and assignees about the new comment
+        var task = await _db.Tasks
+            .Include(t => t.Assignees)
+            .FirstOrDefaultAsync(t => t.Id == taskId);
+
+        if (task != null)
+        {
+            var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+            if (workspace != null)
+            {
+                var recipients = task.Assignees
+                    .Where(a => a.UserId != Guid.Empty)
+                    .Select(a => a.UserId)
+                    .ToHashSet();
+                if (task.CreatedById.HasValue)
+                    recipients.Add(task.CreatedById.Value);
+                recipients.Remove(userId); // don't notify yourself
+
+                foreach (var rid in recipients)
+                {
+                    await _notifications.SendAsync(rid, workspace.Id, NotificationType.Comment,
+                        $"New comment on task: {task.Title}",
+                        entityType: "task", entityId: task.Id, actorId: userId);
+                }
+            }
+        }
 
         return CreatedAtAction(nameof(GetAll), new { workspaceSlug, taskId }, result);
     }

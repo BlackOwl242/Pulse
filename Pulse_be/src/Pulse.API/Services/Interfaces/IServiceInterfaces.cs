@@ -1,4 +1,5 @@
 using Pulse.API.Models.DTOs.Auth;
+using Pulse.API.Models.Enums;
 
 namespace Pulse.API.Services.Interfaces;
 
@@ -42,4 +43,11 @@ public interface ICacheService
 public interface IWebhookService
 {
     Task SendWebhookAsync(string eventType, object payload);
+}
+
+public interface INotificationService
+{
+    Task SendAsync(Guid userId, Guid workspaceId, NotificationType type,
+                   string title, string? content = null,
+                   string? entityType = null, Guid? entityId = null, Guid? actorId = null);
 }

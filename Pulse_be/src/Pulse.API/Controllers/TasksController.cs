@@ -16,11 +16,13 @@ public class TasksController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
 
-    public TasksController(ApplicationDbContext db, ICurrentUserService currentUser)
+    public TasksController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
     {
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     /// <summary>
@@ -133,6 +135,21 @@ public class TasksController : ControllerBase
         _db.Tasks.Add(task);
         await _db.SaveChangesAsync();
 
+        // Notify assigned users
+        if (request.AssigneeIds != null)
+        {
+            var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+            if (workspace != null)
+            {
+                foreach (var aId in request.AssigneeIds.Where(a => a != userId))
+                {
+                    await _notifications.SendAsync(aId, workspace.Id, NotificationType.TaskAssigned,
+                        $"You have been assigned to task: {task.Title}",
+                        entityType: "task", entityId: task.Id, actorId: userId);
+                }
+            }
+        }
+
         return CreatedAtAction(nameof(GetById),
             new { workspaceSlug, taskId = task.Id },
             MapToDto(task));
@@ -144,6 +161,7 @@ public class TasksController : ControllerBase
     [HttpPut("/api/workspaces/{workspaceSlug}/tasks/{taskId}")]
     public async Task<IActionResult> Update(string workspaceSlug, Guid taskId, [FromBody] UpdateTaskRequest request)
     {
+        var userId = _currentUser.UserId!.Value;
         var task = await _db.Tasks.FindAsync(taskId);
         if (task == null) return NotFound();
 
@@ -174,6 +192,31 @@ public class TasksController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+
+        // Send notifications
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace != null)
+        {
+            // Notify new assignees
+            if (request.AssigneeIds != null)
+            {
+                foreach (var aId in request.AssigneeIds.Where(a => a != userId))
+                {
+                    await _notifications.SendAsync(aId, workspace.Id, NotificationType.TaskAssigned,
+                        $"You have been assigned to task: {task.Title}",
+                        entityType: "task", entityId: task.Id, actorId: userId);
+                }
+            }
+
+            // Notify task creator when status changes
+            if (request.Status.HasValue && task.CreatedById.HasValue && task.CreatedById.Value != userId)
+            {
+                await _notifications.SendAsync(task.CreatedById.Value, workspace.Id, NotificationType.StatusChanged,
+                    $"Task '{task.Title}' status changed to {request.Status.Value}",
+                    entityType: "task", entityId: task.Id, actorId: userId);
+            }
+        }
+
         return NoContent();
     }
 

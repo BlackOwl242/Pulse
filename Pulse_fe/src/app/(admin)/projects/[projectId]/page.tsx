@@ -871,8 +871,8 @@ function TaskCard({ task, isDragging, onDragStart, onDragEnd, onClick }: {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 flex-wrap">
           {pConfig.label && <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${pConfig.color}`}>{pConfig.label}</span>}
-          {task.subtaskCount > 0 && <span className="text-[10px] text-gray-400">☑ {task.completedSubtaskCount}/{task.subtaskCount}</span>}
-          {task.commentCount > 0 && <span className="text-[10px] text-gray-400">💬 {task.commentCount}</span>}
+          {task.subtaskCount > 0 && <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-400"><svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>{task.completedSubtaskCount}/{task.subtaskCount}</span>}
+          {task.commentCount > 0 && <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-400"><svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>{task.commentCount}</span>}
         </div>
         {task.assignees && task.assignees.length > 0 && (
           <div className="flex -space-x-1.5 overflow-hidden">
@@ -894,7 +894,10 @@ function TaskCard({ task, isDragging, onDragStart, onDragEnd, onClick }: {
         )}
       </div>
       {task.deadline && (
-        <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-400">📅 {new Date(task.deadline).toLocaleDateString()}</div>
+        <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-400">
+          <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+          {new Date(task.deadline).toLocaleDateString()}
+        </div>
       )}
     </div>
   );

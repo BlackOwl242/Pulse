@@ -17,6 +17,9 @@ public class ChatChannel : BaseEntity
 
     public ICollection<ChatChannelMember> Members { get; set; } = new List<ChatChannelMember>();
     public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
+
+    // Self-destruct timer (seconds). null = off
+    public int? SelfDestructSeconds { get; set; }
 }
 
 public class ChatChannelMember
@@ -43,9 +46,17 @@ public class ChatMessage : BaseEntity, ISoftDeletable
     public ChatMessage? ReplyTo { get; set; }
     public bool IsEdited { get; set; }
 
+    // Attachment support
+    public string? AttachmentUrl { get; set; }
+    public string? AttachmentName { get; set; }
+    public string? AttachmentType { get; set; } // e.g. "image", "video", "audio"
+
     // Soft delete
     public DateTime? DeletedAt { get; set; }
     public bool IsDeleted { get; set; }
+
+    // Self-destruct: set when first non-sender views the message
+    public DateTime? DeleteAfterAt { get; set; }
 }
 
 public class Notification : BaseEntity

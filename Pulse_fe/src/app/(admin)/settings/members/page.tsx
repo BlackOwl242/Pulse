@@ -138,7 +138,7 @@ export default function MembersPage() {
                   ))}
                 </select>
               </div>
-              {inviteSuccess && <p className="text-sm text-green-500 flex items-center gap-1">✓ {inviteSuccess}</p>}
+              {inviteSuccess && <p className="text-sm text-green-500 flex items-center gap-1"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>{inviteSuccess}</p>}
               {inviteError && <p className="text-sm text-red-500">{inviteError}</p>}
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800">

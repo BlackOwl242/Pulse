@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Energy Sphere - Hand Control</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505; /* Nền tối hơn chút */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            /* Hiệu ứng vignette nhẹ cho nền */
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+        }
+
+        #input-video { display: none; }
+
+        /* Giao diện người dùng (UI) */
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(20, 20, 20, 0.75);
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            max-width: 320px;
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 20px; color: #00d2ff; font-weight: 300; }
+        p { font-size: 13px; line-height: 1.6; color: #ccc; }
+        b { color: white; }
+        
+        .control-group {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.05);
+            padding: 5px 10px;
+            border-radius: 8px;
+        }
+
+        label { font-size: 14px; font-weight: 500; }
+        
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; }
+
+
+        #status {
+            margin-top: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #ffcc00;
+            text-align: center;
+        }
+
+        .loading {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20; font-size: 20px; pointer-events: none;
+            color: #00d2ff; letter-spacing: 2px;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <video id="input-video"></video>
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <h2>Energy Sphere</h2>
+        <p>Sử dụng <b>2 tay</b> để tương tác.</p>
+        <p>Di chuyển 2 ngón trỏ ra xa/gần nhau để điều khiển kích thước và năng lượng.</p>
+        
+        <div class="control-group">
+            <label for="colorPicker">Màu năng lượng:</label>
+            <input type="color" id="colorPicker" value="#00d2ff">
+        </div>
+        <div id="status">Đang khởi động AI...</div>
+    </div>
+
+    <div id="loading-text" class="loading">LOADING SYSTEM...</div>
+
+<script>
+    // --- 1. CẤU HÌNH THREE.JS ---
+    const scene = new THREE.Scene();
+    // scene.fog = new THREE.FogExp2(0x000000, 0.002); // Tạm tắt sương mù để thấy rõ hiệu ứng
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 90;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Giới hạn pixel ratio để tối ưu hiệu năng
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    // --- 2. TẠO HỆ THỐNG HẠT VỚI DỮ LIỆU CƠ SỞ ---
+    const particleCount = 8000; // Tăng số lượng hạt lên một chút
+    const geometry = new THREE.BufferGeometry();
+    
+    // Mảng chứa vị trí hiện tại (sẽ thay đổi mỗi frame)
+    const positions = new Float32Array(particleCount * 3);
+    // Mảng chứa vị trí gốc (để làm neo)
+    const basePositions = new Float32Array(particleCount * 3);
+    
+    const radius = 35;
+    for (let i = 0; i < particleCount; i++) {
+        // Thuật toán Fibonacci Sphere
+        const phi = Math.acos(-1 + (2 * i) / particleCount);
+        const theta = Math.sqrt(particleCount * Math.PI) * phi;
+
+        const x = radius * Math.cos(theta) * Math.sin(phi);
+        const y = radius * Math.sin(theta) * Math.sin(phi);
+        const z = radius * Math.cos(phi);
+
+        // Lưu vào cả 2 mảng
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+
+        basePositions[i * 3] = x;
+        basePositions[i * 3 + 1] = y;
+        basePositions[i * 3 + 2] = z;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    // Lưu trữ basePositions vào userData của geometry để tiện truy cập sau này
+    geometry.userData.basePositions = basePositions;
+
+    const material = new THREE.PointsMaterial({
+        color: 0x00d2ff,
+        size: 0.6, // Giảm size một chút để nhìn rõ chuyển động
+        transparent: true,
+        opacity: 0.9,
+        // Blending additive làm cho các hạt sáng rực lên khi chồng lên nhau
+        blending: THREE.AdditiveBlending,
+        depthWrite: false // Quan trọng để hiệu ứng additive hoạt động đúng
+    });
+
+    const particles = new THREE.Points(geometry, material);
+    scene.add(particles);
+
+    // Khởi tạo Simplex Noise
+    const simplex = new SimplexNoise();
+
+
+    // --- 3. XỬ LÝ MEDIAPIPE HANDS ---
+    const videoElement = document.getElementById('input-video');
+    const statusText = document.getElementById('status');
+    const loadingText = document.getElementById('loading-text');
+
+    let targetScale = 1;
+    let currentScale = 1;
+    // Biến này dùng để điều chỉnh độ mạnh của hiệu ứng vật lý dựa trên scale
+    let energyIntensity = 0; 
+
+    function onResults(results) {
+        loadingText.style.display = 'none';
+        
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length === 2) {
+            statusText.innerText = "✔ Đã kết nối 2 tay";
+            statusText.style.color = "#00ff88";
+
+            const hand1 = results.multiHandLandmarks[0][8]; // Ngón trỏ tay 1
+            const hand2 = results.multiHandLandmarks[1][8]; // Ngón trỏ tay 2
+
+            const dx = hand1.x - hand2.x;
+            const dy = hand1.y - hand2.y;
+            // Khoảng cách thực tế trong không gian camera (0.0 -> ~0.8)
+            const distance = Math.sqrt(dx*dx + dy*dy);
+
+            // Map khoảng cách sang scale. Điều chỉnh các số này để có cảm giác tốt nhất.
+            // Khoảng cách nhỏ (gần nhau) -> scale nhỏ. Khoảng cách lớn -> scale lớn.
+            // Tăng hệ số nhân (ví dụ 5) để nhạy hơn.
+            targetScale = 0.8 + (distance * 5); 
+
+        } else {
+            statusText.innerText = "Chờ tín hiệu 2 tay...";
+            statusText.style.color = "#ffcc00";
+            // Từ từ trở về trạng thái nghỉ
+            targetScale = 1;
+        }
+    }
+
+    const hands = new Hands({locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+    }});
+
+    hands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
+    });
+
+    hands.onResults(onResults);
+
+    const cameraUtils = new Camera(videoElement, {
+        onFrame: async () => {
+            await hands.send({image: videoElement});
+        },
+        width: 640,
+        height: 480
+    });
+    cameraUtils.start();
+
+    // --- 4. UI COLOR PICKER ---
+    const colorPicker = document.getElementById('colorPicker');
+    colorPicker.addEventListener('input', (event) => {
+        material.color.set(event.target.value);
+        // Cập nhật màu cho tiêu đề luôn cho đồng bộ
+        document.querySelector('h2').style.color = event.target.value;
+    });
+
+    // --- 5. ANIMATION LOOP (CÓ VẬT LÝ) ---
+    const clock = new THREE.Clock();
+
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        const time = clock.getElapsedTime();
+        
+        // 1. Xử lý Scale mượt (LERP)
+        currentScale += (targetScale - currentScale) * 0.08;
+        particles.scale.set(currentScale, currentScale, currentScale);
+
+        // 2. Tính toán "Năng lượng" dựa trên độ mở rộng
+        // Khi scale > 1.2, năng lượng tăng mạnh.
+        energyIntensity = Math.max(0, (currentScale - 1.2) * 2.5);
+        // Mức độ dao động cơ bản khi ở trạng thái nghỉ
+        const baseAmplitude = 1.5; 
+        // Tổng biên độ dao động
+        const totalAmplitude = baseAmplitude + (energyIntensity * 8);
+        // Tốc độ dao động nhanh hơn khi năng lượng cao
+        const timeSpeed = 0.5 + (energyIntensity * 0.5);
+
+        // 3. Cập nhật vị trí từng hạt bằng Noise
+        const positionAttribute = particles.geometry.attributes.position;
+        const basePosArr = particles.geometry.userData.basePositions;
+        
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            // Lấy vị trí gốc
+            const bx = basePosArr[i3];
+            const by = basePosArr[i3 + 1];
+            const bz = basePosArr[i3 + 2];
+
+            // Tạo nhiễu 3D dựa trên vị trí gốc và thời gian
+            // Chia tọa độ cho một số (ví dụ 30) để làm "mềm" vùng nhiễu (noise frequency)
+            const noiseX = simplex.noise3D(bx / 30, by / 30, time * timeSpeed);
+            const noiseY = simplex.noise3D(by / 30, bz / 30, time * timeSpeed + 100); // +100 offset để khác biệt
+            const noiseZ = simplex.noise3D(bz / 30, bx / 30, time * timeSpeed + 200);
+
+            // Gán vị trí mới = Vị trí gốc + (Giá trị nhiễu * Biên độ)
+            positions[i3]     = bx + noiseX * totalAmplitude;
+            positions[i3 + 1] = by + noiseY * totalAmplitude;
+            positions[i3 + 2] = bz + noiseZ * totalAmplitude;
+        }
+        
+        // Báo cho Three.js biết cần cập nhật lại geometry
+        positionAttribute.needsUpdate = true;
+
+        // Xoay nhẹ cả khối cầu
+        particles.rotation.y += 0.001;
+        particles.rotation.z += 0.0005;
+
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // --- 6. RESIZE ---
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+</script>
+</body>
+</html>

@@ -4,12 +4,21 @@ import { roleService } from "@/services/roleService";
 import { Role, Permission, PermissionGroup } from "@/types/roles";
 
 // ===== Permission Module Labels & Icons =====
-const MODULE_META: Record<string, { label: string; icon: string; color: string }> = {
-  workspace: { label: "Workspace", icon: "🏢", color: "#6366f1" },
-  project: { label: "Project", icon: "📁", color: "#10b981" },
-  task: { label: "Task", icon: "✅", color: "#f59e0b" },
-  team: { label: "Team", icon: "👥", color: "#3b82f6" },
-  role: { label: "Role", icon: "🛡️", color: "#ef4444" },
+const MODULE_ICONS: Record<string, React.ReactNode> = {
+  workspace: <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>,
+  project: <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>,
+  task: <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  team: <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>,
+  role: <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>,
+};
+const MODULE_DEFAULT_ICON = <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>;
+
+const MODULE_META: Record<string, { label: string; color: string }> = {
+  workspace: { label: "Workspace", color: "#6366f1" },
+  project: { label: "Project", color: "#10b981" },
+  task: { label: "Task", color: "#f59e0b" },
+  team: { label: "Team", color: "#3b82f6" },
+  role: { label: "Role", color: "#ef4444" },
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -267,12 +276,13 @@ export default function RolesSettingsPage() {
                 <div className="px-6 pb-5 pt-2 border-t border-gray-100 dark:border-gray-800">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {permissionGroups.map((group) => {
-                      const meta = MODULE_META[group.module] || { label: group.module, icon: "📦", color: "#6b7280" };
+                      const meta = MODULE_META[group.module] || { label: group.module, color: "#6b7280" };
+                      const icon = MODULE_ICONS[group.module] ?? MODULE_DEFAULT_ICON;
                       const rolePermIds = new Set(role.permissions.map((p) => p.id));
                       return (
                         <div key={group.module} className="rounded-lg border border-gray-100 dark:border-gray-800 p-3">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-base">{meta.icon}</span>
+                            <span className="text-gray-500 dark:text-gray-400">{icon}</span>
                             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                               {meta.label}
                             </h4>
@@ -369,7 +379,8 @@ export default function RolesSettingsPage() {
                 </h3>
                 <div className="space-y-3">
                   {permissionGroups.map((group) => {
-                    const meta = MODULE_META[group.module] || { label: group.module, icon: "📦", color: "#6b7280" };
+                    const meta = MODULE_META[group.module] || { label: group.module, color: "#6b7280" };
+                    const icon = MODULE_ICONS[group.module] ?? MODULE_DEFAULT_ICON;
                     const allIds = group.permissions.map((p) => p.id);
                     const allSelected = allIds.every((id) => selectedPermissions.has(id));
                     const someSelected = allIds.some((id) => selectedPermissions.has(id));
@@ -390,7 +401,7 @@ export default function RolesSettingsPage() {
                             onChange={() => toggleModule(group.module)}
                             className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
                           />
-                          <span className="text-base">{meta.icon}</span>
+                          <span className="text-gray-500 dark:text-gray-400">{icon}</span>
                           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {meta.label}
                           </span>

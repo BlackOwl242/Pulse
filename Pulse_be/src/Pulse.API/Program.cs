@@ -12,6 +12,9 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Allow up to 1 GB file uploads
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 1024L * 1024 * 1024);
+
 // ===== Serilog =====
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
@@ -93,6 +96,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // ===== SignalR =====
 builder.Services.AddSignalR();
@@ -115,6 +119,7 @@ builder.Services.AddCors(options =>
 
 // ===== Swagger =====
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHostedService<Pulse.API.Services.MessageCleanupService>();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -162,6 +167,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseCors("PulsePolicy");
 app.UseAuthentication();
 app.UseAuthorization();

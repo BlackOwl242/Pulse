@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Pulse.API.Data;
+using Pulse.API.Hubs;
 using Pulse.API.Models.Entities.Communication;
 using Pulse.API.Models.Enums;
 using Pulse.API.Services.Interfaces;
@@ -15,11 +17,15 @@ public class ChatController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly IHubContext<ChatHub> _chatHub;
+    private readonly IWebHostEnvironment _env;
 
-    public ChatController(ApplicationDbContext db, ICurrentUserService currentUser)
+    public ChatController(ApplicationDbContext db, ICurrentUserService currentUser, IHubContext<ChatHub> chatHub, IWebHostEnvironment env)
     {
         _db = db;
         _currentUser = currentUser;
+        _chatHub = chatHub;
+        _env = env;
     }
 
     [HttpGet("channels")]
@@ -33,7 +39,7 @@ public class ChatController : ControllerBase
             .Where(c => c.WorkspaceId == workspace.Id && c.Members.Any(m => m.UserId == userId && (m.HiddenAt == null || c.Messages.Any(msg => msg.CreatedAt > m.HiddenAt))))
             .Select(c => new
             {
-                c.Id, c.Name, c.Type,
+                c.Id, c.Name, c.Type, c.SelfDestructSeconds,
                 LastMessage = c.Messages.OrderByDescending(m => m.CreatedAt).Select(m => new
                 {
                     m.Content, m.CreatedAt,
@@ -94,14 +100,149 @@ public class ChatController : ControllerBase
             .Select(m => new
             {
                 m.Id, m.Content, m.Type, m.CreatedAt, m.IsEdited, m.ReplyToId,
+                m.AttachmentUrl, m.AttachmentName, m.AttachmentType,
+                m.DeleteAfterAt,
                 Sender = new { m.Sender.Id, m.Sender.FirstName, m.Sender.LastName, m.Sender.AvatarUrl }
             })
             .ToListAsync();
 
         // Mark channel as read
-        if (member != null) { member.LastReadAt = DateTime.UtcNow; await _db.SaveChangesAsync(); }
+        member.LastReadAt = DateTime.UtcNow;
 
+        // Self-destruct: for messages this user can see that were sent by someone else,
+        // start the timer if not already started
+        var channel = await _db.ChatChannels.FindAsync(channelId);
+        if (channel?.SelfDestructSeconds != null)
+        {
+            var msgIds = messages
+                .Where(m => m.Sender.Id != userId && m.DeleteAfterAt == null)
+                .Select(m => m.Id)
+                .ToList();
+
+            if (msgIds.Any())
+            {
+                var deleteAt = DateTime.UtcNow.AddSeconds(channel.SelfDestructSeconds.Value);
+                await _db.ChatMessages
+                    .Where(m => msgIds.Contains(m.Id))
+                    .ExecuteUpdateAsync(s => s.SetProperty(m => m.DeleteAfterAt, deleteAt));
+            }
+        }
+
+        await _db.SaveChangesAsync();
         return Ok(messages);
+    }
+
+    // ─── Self-destruct timer endpoint ───
+    [HttpPut("channels/{channelId}/destruct-timer")]
+    public async Task<IActionResult> SetDestructTimer(string workspaceSlug, Guid channelId, [FromBody] SetDestructTimerRequest req)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var channel = await _db.ChatChannels.FindAsync(channelId);
+        if (channel == null) return NotFound();
+
+        channel.SelfDestructSeconds = req.Seconds;
+        
+        // Post system message to notify the channel
+        var user = await _db.Users.FindAsync(userId);
+        var label = req.Seconds == null ? "disabled" : GetTimerLabel(req.Seconds.Value);
+        var sysContent = req.Seconds == null
+            ? $"{user!.FirstName} turned off disappearing messages"
+            : $"{user!.FirstName} set messages to disappear after {label}";
+
+        var sysMessage = new ChatMessage
+        {
+            ChannelId = channelId,
+            SenderId = userId,
+            Content = sysContent,
+            Type = MessageType.System
+        };
+        _db.ChatMessages.Add(sysMessage);
+        await _db.SaveChangesAsync();
+
+        var sender = await _db.Users.Where(u => u.Id == userId)
+            .Select(u => new { u.Id, u.FirstName, u.LastName, u.AvatarUrl })
+            .FirstOrDefaultAsync();
+
+        await _chatHub.Clients.Group($"channel_{channelId}").SendAsync("ReceiveMessage", new
+        {
+            id = sysMessage.Id,
+            channelId,
+            content = sysContent,
+            type = (int)MessageType.System,
+            createdAt = sysMessage.CreatedAt,
+            isEdited = false,
+            sender
+        });
+
+        return Ok(new { seconds = req.Seconds });
+    }
+
+    private static string GetTimerLabel(int seconds) => seconds switch
+    {
+        10 => "10 seconds",
+        30 => "30 seconds",
+        60 => "1 minute",
+        300 => "5 minutes",
+        600 => "10 minutes",
+        1800 => "30 minutes",
+        3600 => "1 hour",
+        86400 => "1 day",
+        604800 => "1 week",
+        _ => $"{seconds} seconds"
+    };
+
+    // ─── File serving endpoint (no auth required) ───
+    [HttpGet("/api/files/chat/{fileName}")]
+    [AllowAnonymous]
+    public IActionResult ServeFile(string fileName)
+    {
+        // Sanitize to prevent directory traversal
+        var safeFileName = Path.GetFileName(fileName);
+        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "chat", safeFileName);
+        if (!System.IO.File.Exists(filePath)) return NotFound();
+
+        var ext = Path.GetExtension(safeFileName).ToLowerInvariant();
+        var contentTypes = new Dictionary<string, string>
+        {
+            [".jpg"] = "image/jpeg", [".jpeg"] = "image/jpeg", [".png"] = "image/png",
+            [".gif"] = "image/gif",  [".webp"] = "image/webp", [".avif"] = "image/avif",
+            [".mp4"] = "video/mp4",  [".webm"] = "video/webm", [".mov"] = "video/quicktime",
+            [".mp3"] = "audio/mpeg", [".wav"] = "audio/wav",   [".ogg"] = "audio/ogg",
+            [".aac"] = "audio/aac",  [".m4a"] = "audio/mp4",
+            [".pdf"] = "application/pdf",
+        };
+        var ct = contentTypes.TryGetValue(ext, out var v) ? v : "application/octet-stream";
+        return PhysicalFile(filePath, ct);
+    }
+
+    // ─── File upload endpoint ───
+    [HttpPost("channels/{channelId}/upload")]
+    [RequestSizeLimit(1024L * 1024 * 1024)] // 1 GB
+    public async Task<IActionResult> UploadAttachment(string workspaceSlug, Guid channelId, IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("No file provided");
+
+        // Store files in {ContentRootPath}/uploads/chat/ (not wwwroot)
+        var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "chat");
+        Directory.CreateDirectory(uploadsPath);
+
+        var ext = Path.GetExtension(file.FileName);
+        var fileName = $"{Guid.NewGuid()}{ext}";
+        var filePath = Path.Combine(uploadsPath, fileName);
+
+        await using var stream = new FileStream(filePath, FileMode.Create);
+        await file.CopyToAsync(stream);
+
+        // Serve via dedicated endpoint — works regardless of static files config
+        var url = $"{Request.Scheme}://{Request.Host}/api/files/chat/{fileName}";
+        var contentType = file.ContentType ?? "";
+        var attachmentType = contentType.StartsWith("image") ? "image"
+                           : contentType.StartsWith("video") ? "video"
+                           : contentType.StartsWith("audio") ? "audio"
+                           : "file";
+
+        return Ok(new { url, name = file.FileName, type = attachmentType });
     }
 
     [HttpPost("channels/{channelId}/messages")]
@@ -113,10 +254,35 @@ public class ChatController : ControllerBase
             ChannelId = channelId,
             SenderId = userId,
             Content = req.Content,
-            ReplyToId = req.ReplyToId
+            ReplyToId = req.ReplyToId,
+            AttachmentUrl = req.AttachmentUrl,
+            AttachmentName = req.AttachmentName,
+            AttachmentType = req.AttachmentType,
         };
         _db.ChatMessages.Add(message);
         await _db.SaveChangesAsync();
+
+        var sender = await _db.Users
+            .Where(u => u.Id == userId)
+            .Select(u => new { u.Id, u.FirstName, u.LastName, u.AvatarUrl })
+            .FirstOrDefaultAsync();
+
+        await _chatHub.Clients.Group($"channel_{channelId}")
+            .SendAsync("ReceiveMessage", new
+            {
+                id = message.Id,
+                channelId = channelId,
+                content = message.Content,
+                type = (int)message.Type,
+                createdAt = message.CreatedAt,
+                isEdited = false,
+                replyToId = message.ReplyToId,
+                attachmentUrl = message.AttachmentUrl,
+                attachmentName = message.AttachmentName,
+                attachmentType = message.AttachmentType,
+                sender = sender
+            });
+
         return Ok(new { message.Id, message.Content, message.CreatedAt });
     }
 
@@ -167,4 +333,12 @@ public class SendMessageRequest
 {
     public string Content { get; set; } = string.Empty;
     public Guid? ReplyToId { get; set; }
+    public string? AttachmentUrl { get; set; }
+    public string? AttachmentName { get; set; }
+    public string? AttachmentType { get; set; }
+}
+
+public class SetDestructTimerRequest
+{
+    public int? Seconds { get; set; }
 }

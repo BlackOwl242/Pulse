@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pulse.API.Data;
@@ -12,9 +13,11 @@ using Pulse.API.Data;
 namespace Pulse.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260314015807_AddChatAttachments")]
+    partial class AddChatAttachments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -366,9 +369,6 @@ namespace Pulse.API.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
-                    b.Property<int?>("SelfDestructSeconds")
-                        .HasColumnType("integer");
-
                     b.Property<Guid?>("TaskId")
                         .HasColumnType("uuid");
 
@@ -440,9 +440,6 @@ namespace Pulse.API.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeleteAfterAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("DeletedAt")
@@ -603,221 +600,221 @@ namespace Pulse.API.Migrations
                         {
                             Id = new Guid("f0000000-0001-0001-0001-000000000001"),
                             Action = "manage",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(3733),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(6747),
                             Description = "Full workspace management",
                             Module = "workspace",
                             Resource = "workspace",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(3734)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(6747)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0001-0001-0001-000000000002"),
                             Action = "invite_member",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4337),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7353),
                             Description = "Invite members to workspace",
                             Module = "workspace",
                             Resource = "workspace",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4337)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7354)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0001-0001-0001-000000000003"),
                             Action = "remove_member",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4340),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7357),
                             Description = "Remove members from workspace",
                             Module = "workspace",
                             Resource = "workspace",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4341)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7357)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0002-0001-0001-000000000001"),
                             Action = "create",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4344),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7359),
                             Description = "Create projects",
                             Module = "project",
                             Resource = "project",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4345)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7360)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0002-0001-0001-000000000002"),
                             Action = "view",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4356),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7362),
                             Description = "View projects",
                             Module = "project",
                             Resource = "project",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4356)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7362)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0002-0001-0001-000000000003"),
                             Action = "edit",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4414),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7364),
                             Description = "Edit projects",
                             Module = "project",
                             Resource = "project",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4414)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7364)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0002-0001-0001-000000000004"),
                             Action = "delete",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4417),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7373),
                             Description = "Delete projects",
                             Module = "project",
                             Resource = "project",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4417)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7374)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0002-0001-0001-000000000005"),
                             Action = "manage_members",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4424),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7376),
                             Description = "Manage project members",
                             Module = "project",
                             Resource = "project",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4424)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7376)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0003-0001-0001-000000000001"),
                             Action = "create",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4426),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7378),
                             Description = "Create tasks",
                             Module = "task",
                             Resource = "task",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4426)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7379)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0003-0001-0001-000000000002"),
                             Action = "view",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4428),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7381),
                             Description = "View tasks",
                             Module = "task",
                             Resource = "task",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4429)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7381)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0003-0001-0001-000000000003"),
                             Action = "edit",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4431),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7431),
                             Description = "Edit tasks",
                             Module = "task",
                             Resource = "task",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4431)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7431)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0003-0001-0001-000000000004"),
                             Action = "delete",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4433),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7433),
                             Description = "Delete tasks",
                             Module = "task",
                             Resource = "task",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4433)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7434)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0003-0001-0001-000000000005"),
                             Action = "assign",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4438),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7436),
                             Description = "Assign tasks to members",
                             Module = "task",
                             Resource = "task",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4438)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7436)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0003-0001-0001-000000000006"),
                             Action = "change_status",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4440),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7438),
                             Description = "Change task status",
                             Module = "task",
                             Resource = "task",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4440)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7438)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0004-0001-0001-000000000001"),
                             Action = "create",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4442),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7444),
                             Description = "Create teams",
                             Module = "team",
                             Resource = "team",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4443)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7444)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0004-0001-0001-000000000002"),
                             Action = "view",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4445),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7446),
                             Description = "View teams",
                             Module = "team",
                             Resource = "team",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4445)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7446)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0004-0001-0001-000000000003"),
                             Action = "edit",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4447),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7448),
                             Description = "Edit teams",
                             Module = "team",
                             Resource = "team",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4447)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7448)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0004-0001-0001-000000000004"),
                             Action = "delete",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4449),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7450),
                             Description = "Delete teams",
                             Module = "team",
                             Resource = "team",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4450)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7451)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0005-0001-0001-000000000001"),
                             Action = "create",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4452),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7453),
                             Description = "Create custom roles",
                             Module = "role",
                             Resource = "role",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4452)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7453)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0005-0001-0001-000000000002"),
                             Action = "view",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4454),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7455),
                             Description = "View roles",
                             Module = "role",
                             Resource = "role",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4454)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7455)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0005-0001-0001-000000000003"),
                             Action = "edit",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4459),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7457),
                             Description = "Edit roles",
                             Module = "role",
                             Resource = "role",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4459)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7458)
                         },
                         new
                         {
                             Id = new Guid("f0000000-0005-0001-0001-000000000004"),
                             Action = "delete",
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4461),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7460),
                             Description = "Delete roles",
                             Module = "role",
                             Resource = "role",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 946, DateTimeKind.Utc).AddTicks(4461)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(7460)
                         });
                 });
 
@@ -904,38 +901,38 @@ namespace Pulse.API.Migrations
                         new
                         {
                             Id = new Guid("a1b2c3d4-0001-0001-0001-000000000001"),
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 945, DateTimeKind.Utc).AddTicks(7215),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(524),
                             Description = "Full system access",
                             IsSystem = true,
                             Name = "Admin",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 945, DateTimeKind.Utc).AddTicks(7217)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(527)
                         },
                         new
                         {
                             Id = new Guid("a1b2c3d4-0001-0001-0001-000000000002"),
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 945, DateTimeKind.Utc).AddTicks(8190),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(1395),
                             Description = "Team and project management",
                             IsSystem = true,
                             Name = "Manager",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 945, DateTimeKind.Utc).AddTicks(8190)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(1395)
                         },
                         new
                         {
                             Id = new Guid("a1b2c3d4-0001-0001-0001-000000000003"),
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 945, DateTimeKind.Utc).AddTicks(8197),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(1411),
                             Description = "Standard workspace member",
                             IsSystem = true,
                             Name = "Staff",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 945, DateTimeKind.Utc).AddTicks(8197)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(1412)
                         },
                         new
                         {
                             Id = new Guid("a1b2c3d4-0001-0001-0001-000000000004"),
-                            CreatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 945, DateTimeKind.Utc).AddTicks(8200),
+                            CreatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(1415),
                             Description = "Limited read access",
                             IsSystem = true,
                             Name = "Guest",
-                            UpdatedAt = new DateTime(2026, 3, 14, 2, 53, 22, 945, DateTimeKind.Utc).AddTicks(8200)
+                            UpdatedAt = new DateTime(2026, 3, 14, 1, 58, 6, 275, DateTimeKind.Utc).AddTicks(1415)
                         });
                 });
 

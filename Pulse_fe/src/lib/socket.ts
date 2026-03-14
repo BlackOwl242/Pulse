@@ -40,7 +40,8 @@ export async function connectNotifications(
 
 export async function connectChat(
     onMessage: (message: unknown) => void,
-    onTyping?: (data: unknown) => void
+    onTyping?: (data: unknown) => void,
+    onMessagesDeleted?: (ids: string[]) => void
 ): Promise<signalR.HubConnection> {
     if (!chatConnection) {
         chatConnection = createConnection('chat');
@@ -48,10 +49,14 @@ export async function connectChat(
 
     chatConnection.off('ReceiveMessage');
     chatConnection.off('UserTyping');
+    chatConnection.off('MessagesDeleted');
 
     chatConnection.on('ReceiveMessage', onMessage);
     if (onTyping) {
         chatConnection.on('UserTyping', onTyping);
+    }
+    if (onMessagesDeleted) {
+        chatConnection.on('MessagesDeleted', onMessagesDeleted);
     }
 
     if (chatConnection.state === signalR.HubConnectionState.Disconnected) {
