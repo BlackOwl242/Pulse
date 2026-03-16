@@ -6,9 +6,19 @@ export interface Attachment {
 }
 
 export const attachmentService = {
-    getAll: (slug: string, taskId: string) =>
-        api.get<Attachment[]>(`/workspaces/${slug}/tasks/${taskId}/attachments`).then(r => r.data),
-    add: (slug: string, taskId: string, data: { fileName: string; fileUrl: string; fileType?: string; fileSize: number }) =>
-        api.post(`/workspaces/${slug}/tasks/${taskId}/attachments`, data).then(r => r.data),
-    remove: (slug: string, attId: string) => api.delete(`/workspaces/${slug}/attachments/${attId}`),
+  getForTask: (workspaceSlug: string, taskId: string) =>
+    api.get<Attachment[]>(`/workspaces/${workspaceSlug}/tasks/${taskId}/attachments`).then(r => r.data),
+  
+  uploadForTask: (workspaceSlug: string, taskId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<Attachment>(`/workspaces/${workspaceSlug}/tasks/${taskId}/attachments`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }).then(r => r.data);
+  },
+
+  delete: (workspaceSlug: string, attachmentId: string) =>
+    api.delete(`/workspaces/${workspaceSlug}/attachments/${attachmentId}`)
 };

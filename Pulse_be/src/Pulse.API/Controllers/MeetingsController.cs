@@ -67,6 +67,7 @@ public class MeetingsController : ControllerBase
             ProposedEndTime = endUtc,
             Status = MeetingStatus.Proposed
         };
+
         _db.Meetings.Add(meeting);
 
         // Add organizer as participant

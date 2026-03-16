@@ -15,7 +15,6 @@ public enum NotificationChannel { InApp, Email, Push }
 public enum ChannelMemberRole { Member, Admin, Creator }
 
 public enum PlannerBlockType { Task, Meeting, Personal, Break }
-public enum CalendarEventSource { Internal, Google }
 public enum CalendarEventStatus { Tentative, Confirmed, Cancelled }
 public enum MeetingStatus { Proposed, Confirmed, Cancelled }
 public enum ResponseStatus { Pending, Accepted, Declined, Tentative }

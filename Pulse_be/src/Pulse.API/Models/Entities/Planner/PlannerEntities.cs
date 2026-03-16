@@ -18,19 +18,6 @@ public class PlannerBlock : BaseEntity
     public string? RecurrencePattern { get; set; }
 }
 
-public class GoogleCalendarConnection : BaseEntity
-{
-    public Guid UserId { get; set; }
-    public User User { get; set; } = null!;
-    public string AccessToken { get; set; } = string.Empty;
-    public string RefreshToken { get; set; } = string.Empty;
-    public string? CalendarId { get; set; }
-    public string? SyncToken { get; set; }
-    public bool SyncEnabled { get; set; } = true;
-    public DateTime? LastSyncAt { get; set; }
-    public DateTime TokenExpiresAt { get; set; }
-}
-
 public class CalendarEvent : BaseEntity
 {
     public Guid UserId { get; set; }
@@ -43,7 +30,6 @@ public class CalendarEvent : BaseEntity
     public DateTime EndTime { get; set; }
     public bool IsAllDay { get; set; }
     public string? Location { get; set; }
-    public CalendarEventSource Source { get; set; } = CalendarEventSource.Internal;
     public CalendarEventStatus Status { get; set; } = CalendarEventStatus.Confirmed;
     public List<string> Attendees { get; set; } = new();
 }

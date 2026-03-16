@@ -13,11 +13,13 @@ public class AuthService : IAuthService
 {
     private readonly ApplicationDbContext _db;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly IEmailService _emailService;
 
-    public AuthService(ApplicationDbContext db, IJwtTokenService jwtTokenService)
+    public AuthService(ApplicationDbContext db, IJwtTokenService jwtTokenService, IEmailService emailService)
     {
         _db = db;
         _jwtTokenService = jwtTokenService;
+        _emailService = emailService;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
@@ -169,8 +171,8 @@ public class AuthService : IAuthService
         _db.PasswordResetTokens.Add(token);
         await _db.SaveChangesAsync();
 
-        // TODO: Send email via IEmailService with reset link
-        // await _emailService.SendPasswordResetEmailAsync(email, $"https://app.pulse.com/reset-password?token={token.Token}");
+        var resetLink = $"http://localhost:3000/reset-password?token={token.Token}&email={Uri.EscapeDataString(email)}";
+        await _emailService.SendPasswordResetEmailAsync(email, resetLink);
     }
 
     public async Task ResetPasswordAsync(ResetPasswordRequest request)

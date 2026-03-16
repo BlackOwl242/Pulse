@@ -169,6 +169,21 @@ public class AuthController : ControllerBase
         await _authService.ResetPasswordAsync(request);
         return Ok(new { message = "Password has been reset successfully." });
     }
+
+    /// <summary>
+    /// Change password for authenticated users
+    /// </summary>
+    [HttpPut("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            return Unauthorized();
+
+        await _authService.ChangePasswordAsync(userId, request);
+        return Ok(new { message = "Password updated successfully." });
+    }
 }
 
 public class RefreshTokenRequest

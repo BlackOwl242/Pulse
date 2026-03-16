@@ -66,6 +66,11 @@ export default function SignInForm() {
             {/* Google Login */}
             <button
               type="button"
+              onClick={() => {
+                // SSO Prep: Redirect to Keycloak for Google login
+                // User will authenticate there and be redirected back to a callback page
+                window.location.href = "http://localhost:8080/realms/pulse/protocol/openid-connect/auth?client_id=pulse-client&redirect_uri=http://localhost:3000/auth/callback&response_type=token&scope=openid email profile";
+              }}
               className="flex items-center justify-center w-full gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -141,7 +146,7 @@ export default function SignInForm() {
                     </span>
                   </div>
                   <Link
-                    href="/reset-password"
+                    href="/forgot-password"
                     className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
                     Forgot password?

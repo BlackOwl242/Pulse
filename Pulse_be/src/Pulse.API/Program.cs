@@ -97,6 +97,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // ===== SignalR =====
 builder.Services.AddSignalR();
@@ -167,8 +168,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
-app.UseStaticFiles();
 app.UseCors("PulsePolicy");
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 

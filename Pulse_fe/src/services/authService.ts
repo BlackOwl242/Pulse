@@ -1,5 +1,5 @@
 import api from './api';
-import { AuthResponse, LoginRequest, RegisterRequest } from '@/types/auth';
+import { AuthResponse, LoginRequest, RegisterRequest, ResetPasswordRequest, ChangePasswordRequest } from '@/types/auth';
 
 export const authService = {
     register: (data: RegisterRequest) =>
@@ -11,12 +11,11 @@ export const authService = {
     refreshToken: (refreshToken: string) =>
         api.post<AuthResponse>('/auth/refresh-token', { refreshToken }).then((res) => res.data),
 
-    forgotPassword: (email: string) =>
-        api.post('/auth/forgot-password', { email }).then((res) => res.data),
+    forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+    resetPassword: (req: ResetPasswordRequest) => api.post('/auth/reset-password', req),
+    changePassword: (req: ChangePasswordRequest) => api.put('/auth/change-password', req),
 
-    resetPassword: (token: string, newPassword: string) =>
-        api.post('/auth/reset-password', { token, newPassword }).then((res) => res.data),
-
-    changePassword: (currentPassword: string, newPassword: string) =>
-        api.post('/auth/change-password', { currentPassword, newPassword }).then((res) => res.data),
+    setToken(token: string) {
+        if (typeof window !== 'undefined') localStorage.setItem('accessToken', token);
+    },
 };

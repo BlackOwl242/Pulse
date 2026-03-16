@@ -54,7 +54,6 @@ public class ApplicationDbContext : DbContext
 
     // Module 4: Planner
     public DbSet<PlannerBlock> PlannerBlocks => Set<PlannerBlock>();
-    public DbSet<GoogleCalendarConnection> GoogleCalendarConnections => Set<GoogleCalendarConnection>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingParticipant> MeetingParticipants => Set<MeetingParticipant>();

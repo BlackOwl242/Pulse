@@ -1,13 +1,22 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { profileService, UserProfile, UpdateProfileRequest } from "@/services/profileService";
+import { authService } from "@/services/authService";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Profile Form State
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState<UpdateProfileRequest>({});
+
+  // Password Form State
+  const [pwdSaving, setPwdSaving] = useState(false);
+  const [pwdSaved, setPwdSaved] = useState(false);
+  const [pwdError, setPwdError] = useState("");
+  const [pwdForm, setPwdForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
   useEffect(() => {
     profileService.get()
@@ -30,7 +39,35 @@ export default function ProfilePage() {
     setSaving(false);
   };
 
+  const handleChangePassword = async () => {
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+      setPwdError("New passwords do not match.");
+      return;
+    }
+    if (pwdForm.newPassword.length < 6) {
+      setPwdError("Password must be at least 6 characters.");
+      return;
+    }
+
+    setPwdSaving(true);
+    setPwdSaved(false);
+    setPwdError("");
+    try {
+      await authService.changePassword({
+        currentPassword: pwdForm.currentPassword,
+        newPassword: pwdForm.newPassword
+      });
+      setPwdSaved(true);
+      setPwdForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setTimeout(() => setPwdSaved(false), 3000);
+    } catch (err: any) {
+      setPwdError(err.response?.data?.message || "Failed to change password.");
+    }
+    setPwdSaving(false);
+  };
+
   const updateField = (key: keyof UpdateProfileRequest, value: string) => setForm({ ...form, [key]: value });
+  const updatePwdField = (key: keyof typeof pwdForm, value: string) => setPwdForm({ ...pwdForm, [key]: value });
 
   if (loading) return <div className="p-6 flex justify-center"><div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -76,6 +113,27 @@ export default function ProfilePage() {
           {saved && <span className="flex items-center gap-1 text-sm text-green-500 font-medium"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>Saved successfully</span>}
         </div>
       </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6 mt-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Security</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">Update your password</p>
+
+        <div className="space-y-4 max-w-md">
+          <PasswordField label="Current Password" value={pwdForm.currentPassword} onChange={(v) => updatePwdField("currentPassword", v)} />
+          <PasswordField label="New Password" value={pwdForm.newPassword} onChange={(v) => updatePwdField("newPassword", v)} />
+          <PasswordField label="Confirm New Password" value={pwdForm.confirmPassword} onChange={(v) => updatePwdField("confirmPassword", v)} />
+          {pwdError && <p className="text-sm text-red-500 mt-1">{pwdError}</p>}
+        </div>
+
+        <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+          <button onClick={handleChangePassword} disabled={pwdSaving || !pwdForm.currentPassword || !pwdForm.newPassword || !pwdForm.confirmPassword}
+            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-white dark:bg-white/[0.05] dark:hover:bg-white/[0.1] rounded-lg disabled:opacity-50 flex items-center gap-2 transition-colors border border-gray-200 dark:border-white/10">
+            {pwdSaving && <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />}
+            Change Password
+          </button>
+          {pwdSaved && <span className="flex items-center gap-1 text-sm text-green-500 font-medium"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>Password updated</span>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -85,6 +143,16 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
     <div>
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
       <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+    </div>
+  );
+}
+
+function PasswordField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+      <input type="password" value={value} onChange={(e) => onChange(e.target.value)}
         className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
     </div>
   );

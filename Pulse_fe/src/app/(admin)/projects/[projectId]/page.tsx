@@ -8,6 +8,7 @@ import { roleService } from "@/services/roleService";
 import { commentService, Comment } from "@/services/commentService";
 import { labelService, TaskLabel } from "@/services/labelService";
 import { checklistService, Checklist } from "@/services/checklistService";
+import { attachmentService, Attachment } from "@/services/attachmentService";
 import { Task, BoardColumn } from "@/types/task";
 import { WorkspaceMember } from "@/types/roles";
 
@@ -68,6 +69,10 @@ export default function ProjectBoardPage() {
   // Checklists
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [newChecklistItemText, setNewChecklistItemText] = useState<Record<string, string>>({});
+  // Attachments
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const fetchBoard = useCallback(async (showLoading = true) => {
     try {
@@ -105,6 +110,36 @@ export default function ProjectBoardPage() {
     fetchComments(task.id);
     fetchLabels();
     fetchChecklists(task.id);
+    fetchAttachments(task.id);
+  };
+
+  const fetchAttachments = async (taskId: string) => {
+    setLoadingAttachments(true);
+    try {
+      const data = await attachmentService.getForTask(slug, taskId);
+      setAttachments(data);
+    } catch { /* ignore */ }
+    setLoadingAttachments(false);
+  };
+
+  const handleUploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedTask || !e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setUploading(true);
+    try {
+      const newAttachment = await attachmentService.uploadForTask(slug, selectedTask.id, file);
+      setAttachments([...attachments, newAttachment]);
+    } catch { /* ignore */ }
+    setUploading(false);
+    // Reset file input
+    e.target.value = "";
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    try {
+      await attachmentService.delete(slug, attachmentId);
+      setAttachments(attachments.filter(a => a.id !== attachmentId));
+    } catch { /* ignore */ }
   };
 
   const fetchChecklists = async (taskId: string) => {
@@ -670,6 +705,60 @@ export default function ProjectBoardPage() {
                               className="flex-1 px-2 py-1 text-xs border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none" />
                             <button onClick={() => addChecklistItem(cl.id)} disabled={!newChecklistItemText[cl.id]?.trim()}
                               className="px-2 py-1 text-xs font-medium text-brand-500 hover:text-brand-600 disabled:opacity-50">Add</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Attachments */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Attachments {attachments.length > 0 && `(${attachments.length})`}</label>
+                  <label className="text-xs text-brand-500 hover:text-brand-600 font-medium cursor-pointer">
+                    {uploading ? "Uploading..." : "+ Add"}
+                    <input type="file" className="hidden" onChange={handleUploadAttachment} disabled={uploading} />
+                  </label>
+                </div>
+                {loadingAttachments ? (
+                  <div className="flex justify-center py-2">
+                    <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : attachments.length === 0 ? (
+                  <p className="text-xs text-gray-400">No attachments</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {attachments.map((file) => {
+                      const isImage = file.fileType?.startsWith("image/") || file.fileName.match(/\.(jpeg|jpg|gif|png|webp)$/i);
+                      return (
+                        <div key={file.id} className="group relative flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white py-2 pl-3 pr-4 dark:border-gray-800 dark:bg-white/5 transition-colors hover:border-gray-300 dark:hover:border-gray-700">
+                          <button onClick={() => handleDeleteAttachment(file.id)} className="absolute flex items-center justify-center w-5 h-5 text-gray-400 bg-white border border-gray-200 rounded-full opacity-0 -right-2 -top-2 group-hover:opacity-100 hover:text-red-500 hover:border-red-200 dark:border-gray-800 dark:bg-gray-900 transition-all z-10">
+                            <svg className="fill-current w-3 h-3" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path fillRule="evenodd" clipRule="evenodd" d="M3.02145 8.2704C2.82618 8.46567 2.82618 8.78225 3.02145 8.97751C3.21671 9.17277 3.53329 9.17277 3.72855 8.97751L5.99935 6.70672L8.2704 8.97777C8.46567 9.17303 8.78225 9.17303 8.97751 8.97777C9.17277 8.78251 9.17277 8.46592 8.97751 8.27066L6.70646 5.99961L8.97751 3.72855C9.17277 3.53329 9.17277 3.21671 8.97751 3.02145C8.78225 2.82618 8.46567 2.82618 8.2704 3.02145L5.99935 5.2925L3.72855 3.02171C3.53329 2.82644 3.21671 2.82644 3.02145 3.02171C2.82618 3.21697 2.82618 3.53355 3.02145 3.72881L5.29224 5.99961L3.02145 8.2704Z" fill="currentColor"/>
+                            </svg>
+                          </button>
+                          
+                          <div className="w-10 h-10 shrink-0 flex items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden">
+                            {isImage ? (
+                              <img src={file.fileUrl} alt={file.fileName} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-bold text-gray-400 uppercase">{file.fileName.split('.').pop()}</span>
+                            )}
+                          </div>
+                          
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-800 dark:text-white/90 truncate" title={file.fileName}>{file.fileName}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                                {file.fileSize > 1024 * 1024 ? `${(file.fileSize / (1024 * 1024)).toFixed(1)} MB` : `${Math.round(file.fileSize / 1024)} KB`}
+                              </span>
+                              <span className="inline-block w-1 h-1 bg-gray-300 dark:bg-gray-600 rounded-full"></span>
+                              <a href={file.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-brand-500 hover:underline">
+                                Download
+                              </a>
+                            </div>
                           </div>
                         </div>
                       );
