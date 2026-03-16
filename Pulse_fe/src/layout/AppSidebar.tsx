@@ -131,7 +131,7 @@ const othersItems: NavItem[] = [];
 const supportItems: NavItem[] = [];
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar();
   const pathname = usePathname();
 
   const renderMenuItems = (
@@ -336,8 +336,16 @@ const AppSidebar: React.FC = () => {
   };
 
   return (
+    <>
+    {/* Mobile backdrop */}
+    {isMobileOpen && (
+      <div
+        className="fixed inset-0 z-[99998] bg-black/50 xl:hidden"
+        onClick={toggleMobileSidebar}
+      />
+    )}
     <aside
-      className={`fixed  flex flex-col xl:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-full transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      className={`fixed flex flex-col xl:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-full transition-all duration-300 ease-in-out z-[99999] border-r border-gray-200 
         ${isExpanded || isMobileOpen
           ? "w-[290px]"
           : isHovered
@@ -350,7 +358,7 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex  ${!isExpanded && !isHovered ? "xl:justify-center" : "justify-start"
+        className={`py-5 flex ${!isExpanded && !isHovered ? "xl:justify-center" : "justify-start"
           }`}
       >
         <Link href="/dashboard">
@@ -384,6 +392,7 @@ const AppSidebar: React.FC = () => {
         </nav>
       </div>
     </aside>
+    </>
   );
 };
 

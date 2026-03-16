@@ -162,7 +162,7 @@ public class TasksController : ControllerBase
     public async Task<IActionResult> Update(string workspaceSlug, Guid taskId, [FromBody] UpdateTaskRequest request)
     {
         var userId = _currentUser.UserId!.Value;
-        var task = await _db.Tasks.FindAsync(taskId);
+        var task = await _db.Tasks.Include(t => t.Assignees).FirstOrDefaultAsync(t => t.Id == taskId);
         if (task == null) return NotFound();
 
         if (request.Title != null) task.Title = request.Title;

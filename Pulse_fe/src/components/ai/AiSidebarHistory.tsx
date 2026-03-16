@@ -78,47 +78,31 @@ export default function AiSidebarHistory({
   return (
     <div className="relative">
       {/* Backdrop */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-[99999] bg-black/50 xl:hidden dark:bg-black/80 transition-opacity"
-          onClick={onCloseSidebar}
-        >
-          <div className="absolute top-4 right-[300px]">
-            <button
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-800 transition hover:bg-gray-100 dark:bg-gray-800 dark:text-white/90 dark:hover:bg-white/3 hover:dark:text-white"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCloseSidebar();
-              }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <path
-                  d="M6.75104 17.249L17.249 6.75111M6.75104 6.75098L17.249 17.2489"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+      <div
+        className={`fixed inset-0 z-[9998] bg-black/50 xl:hidden transition-opacity duration-300 ${
+          isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={onCloseSidebar}
+      />
 
       {/* Sidebar */}
       <aside
-        className={`w-[280px] flex-col  h-full border-l border-gray-200 bg-white p-6 ease-in-out dark:border-gray-800 dark:bg-gray-900 ${
-          isSidebarOpen
-            ? "flex fixed xl:static top-0 z-999999 right-0 h-screen bg-white dark:bg-gray-900"
-            : "hidden xl:flex"
-        }`}
+        className={`w-[280px] flex flex-col h-full border-l border-gray-200 bg-white px-6 pb-6 pt-3 dark:border-gray-800 dark:bg-gray-900
+          fixed xl:static top-[64px] xl:top-0 right-0 h-[calc(100vh-64px)] xl:h-full z-[9999] xl:z-auto
+          transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? "translate-x-0" : "translate-x-full pointer-events-none xl:pointer-events-auto"}
+          xl:translate-x-0 xl:pt-6
+        `}
       >
+        {/* Close button - mobile only */}
+        <button
+          onClick={onCloseSidebar}
+          className="self-end mb-1 xl:hidden inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5 transition-colors"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
         {/* New Chat Button */}
         <button onClick={startNew} className="bg-brand-500 hover:bg-brand-600 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-white transition">
           <svg

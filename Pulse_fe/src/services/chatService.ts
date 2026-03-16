@@ -4,6 +4,7 @@ export interface ChatChannel {
     id: string; name?: string; type: number;
     selfDestructSeconds?: number | null;
     createdById?: string;
+    isMuted?: boolean;
     lastMessage?: { content: string; createdAt: string; sender: { firstName: string; lastName: string }; status?: 'sent' | 'seen' };
     memberCount: number; unreadCount: number;
     members?: { userId: string; firstName: string; lastName: string; avatarUrl?: string }[];
@@ -68,4 +69,6 @@ export const chatService = {
         api.delete(`/workspaces/${slug}/chat/channels/${channelId}`),
     kickAll: (slug: string, channelId: string) =>
         api.post(`/workspaces/${slug}/chat/channels/${channelId}/kick-all`),
+    muteChannel: (slug: string, channelId: string, muted: boolean) =>
+        api.put(`/workspaces/${slug}/chat/channels/${channelId}/mute`, { muted }).then(r => r.data),
 };

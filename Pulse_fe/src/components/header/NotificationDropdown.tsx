@@ -6,6 +6,7 @@ import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { notificationService, NotificationItem } from "@/services/notificationService";
 import { connectNotifications } from "@/lib/socket";
 import { useToast } from "@/components/ui/toast/ToastProvider";
+import { useNotificationPrefs, NOTIF_TYPE_TO_SECTION } from "@/stores/useNotificationPrefs";
 
 const NOTIF_LABELS: Record<number, string> = {
   0: "mentioned you",
@@ -51,6 +52,13 @@ export default function NotificationDropdown() {
     if (!connectedRef.current) {
       connectedRef.current = true;
       connectNotifications((data: any) => {
+        const section = NOTIF_TYPE_TO_SECTION[data.type as number];
+        const prefs = useNotificationPrefs.getState();
+        const sectionPref = section ? prefs.sections[section] : undefined;
+
+        // Skip entirely if section notifications are disabled
+        if (sectionPref && !sectionPref.enabled) return;
+
         const notif: NotificationItem = {
           id: data.id,
           type: data.type,
@@ -64,8 +72,11 @@ export default function NotificationDropdown() {
         };
         setNotifications((prev) => [notif, ...prev]);
         setUnreadCount((c) => c + 1);
-        // Show toast popup
-        showToast(data.title ?? NOTIF_LABELS[data.type] ?? "New notification", data.content);
+
+        // Show toast only if toast is enabled for this section
+        if (!sectionPref || sectionPref.toast) {
+          showToast(data.title ?? NOTIF_LABELS[data.type] ?? "New notification", data.content);
+        }
       }).catch(console.error);
     }
   }, [fetchNotifications]);

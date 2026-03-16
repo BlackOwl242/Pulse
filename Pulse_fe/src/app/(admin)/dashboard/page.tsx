@@ -48,7 +48,7 @@ export default function DashboardPage() {
           // Get user's assigned tasks (InProgress / Todo)
           const userId = user?.id;
           if (userId) {
-            const mine = allTasks.filter(t => t.assignee?.id === userId && t.statusName !== "Done");
+            const mine = allTasks.filter(t => t.assignees?.some((a: any) => a.id === userId) && t.statusName !== "Done");
             setMyTasks(mine.slice(0, 5));
           }
         }

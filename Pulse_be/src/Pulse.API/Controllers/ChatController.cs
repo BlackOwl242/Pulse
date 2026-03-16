@@ -42,6 +42,7 @@ public class ChatController : ControllerBase
             .Select(c => new
             {
                 c.Id, c.Name, c.Type, c.SelfDestructSeconds, c.CreatedById,
+                IsMuted = c.Members.Where(m => m.UserId == userId).Select(m => m.IsMuted).FirstOrDefault(),
                 LastMessage = c.Messages.OrderByDescending(m => m.CreatedAt).Select(m => new
                 {
                     m.Content, m.CreatedAt,
@@ -363,7 +364,7 @@ public class ChatController : ControllerBase
         if (workspace != null)
         {
             var otherMemberIds = await _db.ChatChannelMembers
-                .Where(m => m.ChannelId == channelId && m.UserId != userId)
+                .Where(m => m.ChannelId == channelId && m.UserId != userId && !m.IsMuted)
                 .Select(m => m.UserId)
                 .ToListAsync();
 
@@ -411,6 +412,19 @@ public class ChatController : ControllerBase
         _db.ChatChannelMembers.Remove(member);
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+
+    // ─── Mute/Unmute channel notifications ───
+    [HttpPut("channels/{channelId}/mute")]
+    public async Task<IActionResult> MuteChannel(string workspaceSlug, Guid channelId, [FromBody] MuteRequest req)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var member = await _db.ChatChannelMembers.FirstOrDefaultAsync(m => m.ChannelId == channelId && m.UserId == userId);
+        if (member == null) return NotFound();
+
+        member.IsMuted = req.Muted;
+        await _db.SaveChangesAsync();
+        return Ok(new { muted = member.IsMuted });
     }
 
     // ─── Admin: Get members with roles ───
@@ -560,4 +574,9 @@ public class MarkReadRequest
 public class SetRoleRequest
 {
     public ChannelMemberRole Role { get; set; }
+}
+
+public class MuteRequest
+{
+    public bool Muted { get; set; }
 }

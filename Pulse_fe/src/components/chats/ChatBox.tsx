@@ -17,6 +17,8 @@ interface ChatBoxProps {
   onBack?: () => void;
   onChannelAction?: (action: 'hide' | 'leave' | 'delete-channel' | 'kick-all') => void;
   onSetDestructTimer?: (seconds: number | null) => void;
+  isMuted?: boolean;
+  onMuteToggle?: () => void;
   slug: string;
 }
 
@@ -113,7 +115,7 @@ function MessageAttachment({ url, name, type }: { url: string; name?: string; ty
   );
 }
 
-export default function ChatBox({ activeChannelData, messages, user, msgInput, setMsgInput, sendMessage, sending, messagesEndRef, timeAgo, onBack, onChannelAction, onSetDestructTimer, slug }: ChatBoxProps) {
+export default function ChatBox({ activeChannelData, messages, user, msgInput, setMsgInput, sendMessage, sending, messagesEndRef, timeAgo, onBack, onChannelAction, onSetDestructTimer, isMuted, onMuteToggle, slug }: ChatBoxProps) {
   if (!activeChannelData) {
     return (
       <div className="hidden xl:flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] items-center justify-center p-4">
@@ -143,6 +145,8 @@ export default function ChatBox({ activeChannelData, messages, user, msgInput, s
         channelId={activeChannelData.id}
         createdById={activeChannelData.createdById}
         currentUserId={user?.id}
+        isMuted={isMuted}
+        onMuteToggle={onMuteToggle}
         onAction={onChannelAction}
         selfDestructSeconds={activeChannelData.selfDestructSeconds}
         onSetDestructTimer={onSetDestructTimer}

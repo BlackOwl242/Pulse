@@ -21,6 +21,8 @@ interface ChatBoxHeaderProps {
   channelId?: string;
   createdById?: string;
   currentUserId?: string;
+  isMuted?: boolean;
+  onMuteToggle?: () => void;
   onAction?: (action: 'hide' | 'leave' | 'delete-channel' | 'kick-all') => void;
   selfDestructSeconds?: number | null;
   onSetDestructTimer?: (seconds: number | null) => void;
@@ -232,7 +234,7 @@ function TimerModal({ current, onSelect, onClose }: { current: number | null | u
   );
 }
 
-export default function ChatBoxHeader({ title, avatarUrl, onBack, isGroup, members = [], channelId, createdById, currentUserId, onAction, selfDestructSeconds, onSetDestructTimer }: ChatBoxHeaderProps) {
+export default function ChatBoxHeader({ title, avatarUrl, onBack, isGroup, members = [], channelId, createdById, currentUserId, isMuted, onMuteToggle, onAction, selfDestructSeconds, onSetDestructTimer }: ChatBoxHeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
@@ -262,6 +264,15 @@ export default function ChatBoxHeader({ title, avatarUrl, onBack, isGroup, membe
             <h4 className="text-sm font-medium text-gray-800 dark:text-white/90 whitespace-nowrap">{title || "Chat"}</h4>
             <p className="text-gray-500 text-theme-xs dark:text-gray-400 whitespace-nowrap flex items-center gap-1.5">
               {isGroup ? `${members.length} members` : "Online"}
+              {isMuted && (
+                <span className="inline-flex items-center gap-0.5 text-gray-400 font-medium">
+                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                  </svg>
+                  Muted
+                </span>
+              )}
               {activeLabel && (
                 <span className="inline-flex items-center gap-0.5 text-orange-500 dark:text-orange-400 font-medium">
                   <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M17.66 11.2C17.43 10.9 17.15 10.64 16.89 10.38C16.22 9.78 15.46 9.35 14.82 8.72C13.33 7.26 13 4.85 13.95 3C13 3.23 12.17 3.75 11.46 4.32C8.87 6.4 7.85 10.07 9.07 13.22C9.11 13.32 9.15 13.42 9.15 13.55C9.15 13.77 9 13.97 8.8 14.05C8.57 14.15 8.33 14.09 8.14 13.93C8.08 13.88 8.04 13.83 8 13.76C6.87 12.33 6.69 10.28 7.45 8.64C5.78 10 4.87 12.3 5 14.47C5.06 14.97 5.12 15.47 5.29 15.97C5.43 16.57 5.7 17.17 6 17.7C7.08 19.43 8.95 20.67 10.96 20.92C13.1 21.19 15.39 20.8 17.03 19.32C18.86 17.66 19.5 15 18.56 12.72L18.43 12.46C18.22 12 17.66 11.2 17.66 11.2Z"/></svg>
@@ -297,6 +308,15 @@ export default function ChatBoxHeader({ title, avatarUrl, onBack, isGroup, membe
             <Dropdown isOpen={isOpen} onClose={() => setIsOpen(false)} className="w-56 p-2">
               {isGroup ? (
                 <>
+                  <DropdownItem baseClassName="" onItemClick={() => { setIsOpen(false); if (onMuteToggle) onMuteToggle(); }}
+                    className="flex w-full items-center gap-2.5 whitespace-nowrap font-normal text-left text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 px-3 py-2 text-sm">
+                    {isMuted ? (
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
+                    ) : (
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.143 17.082a24.248 24.248 0 003.714.918m-3.714-.918a23.848 23.848 0 01-5.454-1.31A8.967 8.967 0 016 9.75V9A6 6 0 0118 9v.75M9.143 17.082a3 3 0 105.714 0" /><line x1="3" y1="3" x2="21" y2="21" /></svg>
+                    )}
+                    {isMuted ? "Unmute Notifications" : "Mute Notifications"}
+                  </DropdownItem>
                   <DropdownItem baseClassName="" onItemClick={() => { setIsOpen(false); setShowMembers(true); }}
                     className="flex w-full items-center gap-2.5 whitespace-nowrap font-normal text-left text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 px-3 py-2 text-sm">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>

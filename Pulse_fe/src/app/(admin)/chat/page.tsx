@@ -156,6 +156,23 @@ export default function ChatPage() {
   };
 
   const activeChannelData = channels.find((c) => c.id === activeChannel);
+  const [mutedMap, setMutedMap] = useState<Record<string, boolean>>({});
+
+  // Sync mute state from channels on fetch
+  useEffect(() => {
+    const map: Record<string, boolean> = {};
+    channels.forEach(c => { if (c.isMuted) map[c.id] = true; });
+    setMutedMap(map);
+  }, [channels]);
+
+  const handleMuteToggle = async () => {
+    if (!activeChannel) return;
+    const newMuted = !mutedMap[activeChannel];
+    try {
+      await chatService.muteChannel(slug, activeChannel, newMuted);
+      setMutedMap(prev => ({ ...prev, [activeChannel]: newMuted }));
+    } catch {}
+  };
 
   const handleChannelAction = async (action: 'hide' | 'leave' | 'delete-channel' | 'kick-all') => {
     if (!activeChannel) return;
@@ -208,6 +225,8 @@ export default function ChatPage() {
           messagesEndRef={messagesEndRef} timeAgo={timeAgo} onBack={() => { setActiveChannel(null); activeChannelRef.current = null; }}
           onChannelAction={handleChannelAction}
           onSetDestructTimer={handleSetDestructTimer}
+          isMuted={activeChannel ? !!mutedMap[activeChannel] : false}
+          onMuteToggle={handleMuteToggle}
           slug={slug}
         />
       </div>
