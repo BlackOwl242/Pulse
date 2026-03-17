@@ -42,4 +42,16 @@ export const workspaceService = {
 
     declineInvitation: (invitationId: string) =>
         api.post(`/workspaces/invitations/${invitationId}/decline`).then((res) => res.data),
+
+    leaveWorkspace: (slug: string) =>
+        api.post(`/workspaces/${slug}/leave`).then((res) => res.data),
+
+    deleteWorkspace: (slug: string) =>
+        api.delete(`/workspaces/${slug}`).then((res) => res.data),
+
+    transferOwnership: (slug: string, newOwnerId: string) =>
+        api.post(`/workspaces/${slug}/transfer`, { newOwnerId }).then((res) => res.data),
+
+    getMyInvitations: () =>
+        api.get('/workspaces/my-invitations').then((res) => res.data),
 };

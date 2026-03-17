@@ -435,6 +435,139 @@ public class WorkspacesController : ControllerBase
         return Ok(new { message = "Invitation declined" });
     }
 
+    /// <summary>
+    /// Leave a workspace (non-owner only)
+    /// </summary>
+    [HttpPost("{slug}/leave")]
+    public async Task<IActionResult> LeaveWorkspace(string slug)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        if (workspace.OwnerId == userId)
+            return BadRequest(new { message = "Owner cannot leave. Transfer ownership first or delete the workspace." });
+
+        var membership = await _db.UserWorkspaceRoles
+            .FirstOrDefaultAsync(uwr => uwr.UserId == userId && uwr.WorkspaceId == workspace.Id);
+        if (membership == null) return BadRequest(new { message = "You are not a member of this workspace" });
+
+        _db.UserWorkspaceRoles.Remove(membership);
+        await _db.SaveChangesAsync();
+
+        // Notify remaining members
+        var user = await _db.Users.FindAsync(userId);
+        var memberIds = await _db.UserWorkspaceRoles
+            .Where(uwr => uwr.WorkspaceId == workspace.Id)
+            .Select(uwr => uwr.UserId)
+            .ToListAsync();
+        foreach (var mid in memberIds)
+        {
+            await _notifications.SendAsync(mid, workspace.Id, NotificationType.StatusChanged,
+                $"{user?.FirstName} left {workspace.Name}", null, "workspace", workspace.Id, userId);
+        }
+
+        return Ok(new { message = "You have left the workspace" });
+    }
+
+    /// <summary>
+    /// Delete a workspace (owner only)
+    /// </summary>
+    [HttpDelete("{slug}")]
+    public async Task<IActionResult> DeleteWorkspace(string slug)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        if (workspace.OwnerId != userId)
+            return Forbid();
+
+        // Notify members before deleting
+        var memberIds = await _db.UserWorkspaceRoles
+            .Where(uwr => uwr.WorkspaceId == workspace.Id && uwr.UserId != userId)
+            .Select(uwr => uwr.UserId)
+            .ToListAsync();
+
+        var user = await _db.Users.FindAsync(userId);
+        foreach (var mid in memberIds)
+        {
+            await _notifications.SendAsync(mid, workspace.Id, NotificationType.StatusChanged,
+                $"{workspace.Name} has been deleted", $"The workspace was deleted by {user?.FirstName}", "workspace", workspace.Id, userId);
+        }
+
+        // Remove all related data
+        _db.UserWorkspaceRoles.RemoveRange(_db.UserWorkspaceRoles.Where(uwr => uwr.WorkspaceId == workspace.Id));
+        _db.Invitations.RemoveRange(_db.Invitations.Where(i => i.WorkspaceId == workspace.Id));
+        _db.Workspaces.Remove(workspace);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Workspace deleted" });
+    }
+
+    /// <summary>
+    /// Transfer workspace ownership to another member
+    /// </summary>
+    [HttpPost("{slug}/transfer")]
+    public async Task<IActionResult> TransferOwnership(string slug, [FromBody] TransferOwnershipRequest request)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        if (workspace.OwnerId != userId)
+            return Forbid();
+
+        // Verify target is a member
+        var targetMember = await _db.UserWorkspaceRoles
+            .AnyAsync(uwr => uwr.UserId == request.NewOwnerId && uwr.WorkspaceId == workspace.Id);
+        if (!targetMember)
+            return BadRequest(new { message = "Target user is not a member of this workspace" });
+
+        workspace.OwnerId = request.NewOwnerId;
+        await _db.SaveChangesAsync();
+
+        // Notify the new owner
+        var oldOwner = await _db.Users.FindAsync(userId);
+        await _notifications.SendAsync(request.NewOwnerId, workspace.Id, NotificationType.StatusChanged,
+            $"You are now the owner of {workspace.Name}",
+            $"{oldOwner?.FirstName} transferred ownership to you",
+            "workspace", workspace.Id, userId);
+
+        return Ok(new { message = "Ownership transferred" });
+    }
+
+    /// <summary>
+    /// Get pending invitations for the current user (across all workspaces)
+    /// </summary>
+    [HttpGet("my-invitations")]
+    public async Task<IActionResult> GetMyInvitations()
+    {
+        var userId = _currentUser.UserId!.Value;
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return Unauthorized();
+
+        var invitations = await _db.Invitations
+            .Where(i => i.Email == user.Email && i.Status == InvitationStatus.Pending && i.ExpiresAt > DateTime.UtcNow)
+            .Include(i => i.Workspace)
+            .Include(i => i.Role)
+            .Include(i => i.InvitedBy)
+            .OrderByDescending(i => i.CreatedAt)
+            .Select(i => new
+            {
+                i.Id,
+                WorkspaceName = i.Workspace.Name,
+                WorkspaceSlug = i.Workspace.Slug,
+                RoleName = i.Role.Name,
+                InvitedBy = i.InvitedBy.FirstName + " " + i.InvitedBy.LastName,
+                i.CreatedAt,
+                i.ExpiresAt
+            })
+            .ToListAsync();
+
+        return Ok(invitations);
+    }
+
     private static string GenerateSlug(string name)
     {
         var slug = name.ToLowerInvariant();
@@ -449,5 +582,10 @@ public class WorkspacesController : ControllerBase
 public class ChangeMemberRoleRequest
 {
     public Guid RoleId { get; set; }
+}
+
+public class TransferOwnershipRequest
+{
+    public Guid NewOwnerId { get; set; }
 }
 
