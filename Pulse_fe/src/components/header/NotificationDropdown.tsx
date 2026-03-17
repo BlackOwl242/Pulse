@@ -7,6 +7,7 @@ import { notificationService, NotificationItem } from "@/services/notificationSe
 import { connectNotifications } from "@/lib/socket";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import { useNotificationPrefs, NOTIF_TYPE_TO_SECTION } from "@/stores/useNotificationPrefs";
+import { useSlug } from '@/hooks/useSlug';
 
 const NOTIF_LABELS: Record<number, string> = {
   0: "mentioned you",
@@ -33,11 +34,12 @@ export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const slug = "pulse-demo";
+  const slug = useSlug();
   const connectedRef = useRef(false);
   const { showToast } = useToast();
 
   const fetchNotifications = useCallback(async () => {
+    if (!slug) return;
     try {
       const data = await notificationService.getAll(slug);
       setNotifications(data.notifications);

@@ -4,6 +4,7 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import Image from "next/image";
 import { chatService, ChannelMember } from "@/services/chatService";
+import { useSlug } from '@/hooks/useSlug';
 
 interface Member {
   userId: string;
@@ -57,7 +58,7 @@ function MembersModal({
 }: {
   channelId: string; currentUserId: string; onClose: () => void; onMemberKicked?: () => void;
 }) {
-  const slug = "pulse-demo";
+  const slug = useSlug();
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [createdById, setCreatedById] = useState<string>("");
   const [loading, setLoading] = useState(true);

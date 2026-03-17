@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Pulse.API.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pulse.API.Data;
@@ -11,6 +12,7 @@ namespace Pulse.API.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/meetings")]
 [Authorize]
+[RequireWorkspaceMember]
 public class MeetingsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;

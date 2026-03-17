@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import { useSidebar } from "@/context/SidebarContext";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
 import AuthGuard from "@/components/auth/AuthGuard";
 import { ToastProvider } from "@/components/ui/toast/ToastProvider";
+import { useWorkspaceStore } from "@/stores/useWorkspaceStore";
 
 export default function AdminLayout({
   children,
@@ -13,6 +15,12 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
+  const fetchWorkspaces = useWorkspaceStore((s) => s.fetchWorkspaces);
+
+  // Fetch user's workspaces on mount — populates useSlug() for all child pages
+  useEffect(() => {
+    fetchWorkspaces();
+  }, [fetchWorkspaces]);
 
   // Dynamic class for main content margin based on sidebar state
   const mainContentMargin = isMobileOpen

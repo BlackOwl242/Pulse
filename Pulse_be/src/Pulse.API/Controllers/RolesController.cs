@@ -11,6 +11,7 @@ namespace Pulse.API.Controllers;
 [ApiController]
 [Route("api/workspaces/{slug}/roles")]
 [Authorize]
+[RequireWorkspaceMember]
 public class RolesController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
@@ -21,17 +22,17 @@ public class RolesController : ControllerBase
     }
 
     /// <summary>
-    /// List all roles available in workspace (system + custom)
+    /// List all roles available in workspace (system + custom).
+    /// Membership enforced by [RequireWorkspaceMember] at class level.
     /// </summary>
     [HttpGet]
-    [RequirePermission("role.view")]
     public async Task<ActionResult<List<RoleDto>>> GetRoles(string slug)
     {
         var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
         if (workspace == null) return NotFound(new { message = "Workspace not found" });
 
         var roles = await _db.Roles
-            .Where(r => r.WorkspaceId == null || r.WorkspaceId == workspace.Id) // system + workspace custom
+            .Where(r => r.WorkspaceId == null || r.WorkspaceId == workspace.Id)
             .Include(r => r.RolePermissions)
                 .ThenInclude(rp => rp.Permission)
             .OrderBy(r => r.IsSystem ? 0 : 1)

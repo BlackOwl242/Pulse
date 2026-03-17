@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Pulse.API.Authorization;
 using Pulse.API.Data;
 using Pulse.API.Services.Interfaces;
 
@@ -9,6 +10,7 @@ namespace Pulse.API.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/[controller]")]
 [Authorize]
+[RequireWorkspaceMember]
 public class ProjectsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;

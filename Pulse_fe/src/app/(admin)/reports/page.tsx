@@ -2,12 +2,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { analyticsService, OverviewStats, WorkloadEntry } from "@/services/analyticsService";
 import Link from "next/link";
+import { useSlug } from '@/hooks/useSlug';
 
 export default function ReportsPage() {
   const [overview, setOverview] = useState<OverviewStats | null>(null);
   const [workload, setWorkload] = useState<WorkloadEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetch = useCallback(async () => {
     setLoading(true);

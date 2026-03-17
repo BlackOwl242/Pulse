@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Pulse.API.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ namespace Pulse.API.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/chat")]
 [Authorize]
+[RequireWorkspaceMember]
 public class ChatController : ControllerBase
 {
     private readonly ApplicationDbContext _db;

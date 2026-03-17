@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Pulse.API.Authorization;
 using Pulse.API.Data;
 using Pulse.API.Models.Entities.Analytics;
 using Pulse.API.Services.Interfaces;
@@ -10,6 +11,7 @@ namespace Pulse.API.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}")]
 [Authorize]
+[RequireWorkspaceMember]
 public class TimeTrackingController : ControllerBase
 {
     private readonly ApplicationDbContext _db;

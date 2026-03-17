@@ -8,13 +8,13 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    withCredentials: true,
+    withCredentials: true, // Always send cookies (httpOnly refresh token)
 });
 
-// Request interceptor — attach access token
+// Request interceptor — attach access token from Zustand store (memory)
 api.interceptors.request.use(
     (config) => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+        const token = useAuthStore.getState().accessToken;
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -41,7 +41,7 @@ const processQueue = (error: unknown, token: string | null = null) => {
     failedQueue = [];
 };
 
-// Response interceptor — handle 401 refresh
+// Response interceptor — handle 401 refresh via httpOnly cookie
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
@@ -65,26 +65,19 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                const refreshToken = localStorage.getItem('refresh_token');
-                if (!refreshToken) {
-                    throw new Error('No refresh token');
-                }
-
-                const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh-token`, {
-                    refreshToken,
-                });
+                // Cookie is sent automatically with withCredentials: true
+                const { data } = await axios.post(
+                    `${API_BASE_URL}/api/auth/refresh-token`,
+                    {},
+                    { withCredentials: true }
+                );
 
                 const newAccessToken = data.accessToken;
-                const newRefreshToken = data.refreshToken;
 
-                // Update localStorage
-                localStorage.setItem('access_token', newAccessToken);
-                localStorage.setItem('refresh_token', newRefreshToken);
-
-                // Sync Zustand store so AuthGuard stays happy
+                // Update Zustand store (memory only — no localStorage)
                 const store = useAuthStore.getState();
                 if (store.user) {
-                    store.setAuth(store.user, newAccessToken, newRefreshToken);
+                    store.setAccessToken(newAccessToken);
                 }
 
                 // Process queued requests

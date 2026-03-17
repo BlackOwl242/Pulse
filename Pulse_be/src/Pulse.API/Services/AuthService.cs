@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Pulse.API.Data;
 using Pulse.API.Models.DTOs.Auth;
@@ -49,8 +50,28 @@ public class AuthService : IAuthService
         // Create empty profile
         _db.UserProfiles.Add(new UserProfile { UserId = user.Id });
 
-        // Generate tokens
-        var accessToken = _jwtTokenService.GenerateAccessToken(user, new List<string>());
+        // Auto-create default workspace and assign Admin role
+        var workspaceName = $"{request.FirstName}'s Workspace";
+        var workspace = new Workspace
+        {
+            Name = workspaceName,
+            Slug = GenerateSlug(workspaceName),
+            Description = "My personal workspace",
+            OwnerId = user.Id,
+            CreatedById = user.Id,
+        };
+        _db.Workspaces.Add(workspace);
+
+        var adminRole = await _db.Roles.FirstAsync(r => r.Name == "Admin" && r.IsSystem);
+        _db.UserWorkspaceRoles.Add(new UserWorkspaceRole
+        {
+            UserId = user.Id,
+            WorkspaceId = workspace.Id,
+            RoleId = adminRole.Id
+        });
+
+        // Generate tokens — include the Admin role from the workspace we just created
+        var accessToken = _jwtTokenService.GenerateAccessToken(user, new List<string> { "Admin" });
         var refreshTokenValue = _jwtTokenService.GenerateRefreshToken();
 
         _db.RefreshTokens.Add(new RefreshToken
@@ -245,4 +266,14 @@ public class AuthService : IAuthService
         LastName = user.LastName,
         AvatarUrl = user.AvatarUrl
     };
+
+    private static string GenerateSlug(string name)
+    {
+        var slug = name.ToLowerInvariant();
+        slug = Regex.Replace(slug, @"[^a-z0-9\s-]", "");
+        slug = Regex.Replace(slug, @"\s+", "-");
+        slug = Regex.Replace(slug, @"-+", "-");
+        slug = slug.Trim('-');
+        return $"{slug}-{Guid.NewGuid().ToString("N")[..6]}";
+    }
 }

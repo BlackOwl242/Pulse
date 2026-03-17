@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
 import { okrService, OKRObjective, CreateObjectiveRequest } from "@/services/okrService";
+import { useSlug } from '@/hooks/useSlug';
 
 const STATUS_MAP: Record<number, { label: string; cls: string }> = {
   0: { label: "Draft", cls: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
@@ -27,7 +28,7 @@ export default function OKRPage() {
   const [checkInForm, setCheckInForm] = useState<{ krId: string; newValue: number; note: string; confidence: number } | null>(null);
   const [deletingObjId, setDeletingObjId] = useState<string | null>(null);
   const [deletingKrId, setDeletingKrId] = useState<string | null>(null);
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetch = useCallback(async () => {
     setLoading(true);

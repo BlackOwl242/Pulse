@@ -7,6 +7,8 @@ export interface Workspace {
     plan: 'free' | 'pro' | 'enterprise';
     memberCount: number;
     createdAt: string;
+    roleName?: string;
+    isOwner?: boolean;
 }
 
 export interface Team {

@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { roleService } from "@/services/roleService";
 import { workspaceService } from "@/services/workspaceService";
 import { WorkspaceMember, Role } from "@/types/roles";
+import { useSlug } from '@/hooks/useSlug';
 
 export default function MembersPage() {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
@@ -14,7 +15,7 @@ export default function MembersPage() {
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState("");
   const [inviteError, setInviteError] = useState("");
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetchData = useCallback(async () => {
     try {
@@ -25,7 +26,7 @@ export default function MembersPage() {
       ]);
       setMembers(m);
       setRoles(r);
-      if (r.length > 0 && !inviteRoleId) setInviteRoleId(r.find(role => role.name === "Member")?.id || r[0].id);
+      if (r.length > 0 && !inviteRoleId) setInviteRoleId(r.find(role => role.name === "Staff")?.id || r[0].id);
     } catch { /* ignore */ }
     finally { setLoading(false); }
   }, [slug]);

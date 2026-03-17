@@ -8,14 +8,13 @@ export const authService = {
     login: (data: LoginRequest) =>
         api.post<AuthResponse>('/auth/login', data).then((res) => res.data),
 
-    refreshToken: (refreshToken: string) =>
-        api.post<AuthResponse>('/auth/refresh-token', { refreshToken }).then((res) => res.data),
+    refreshToken: () =>
+        api.post<AuthResponse>('/auth/refresh-token', {}).then((res) => res.data),
+
+    logout: () =>
+        api.post('/auth/logout', {}).then((res) => res.data),
 
     forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
     resetPassword: (req: ResetPasswordRequest) => api.post('/auth/reset-password', req),
     changePassword: (req: ChangePasswordRequest) => api.put('/auth/change-password', req),
-
-    setToken(token: string) {
-        if (typeof window !== 'undefined') localStorage.setItem('accessToken', token);
-    },
 };

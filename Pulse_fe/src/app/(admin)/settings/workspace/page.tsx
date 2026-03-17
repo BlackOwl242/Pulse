@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { workspaceService, PendingInvitation } from "@/services/workspaceService";
 import { roleService } from "@/services/roleService";
 import { Role } from "@/types/roles";
+import { useSlug } from '@/hooks/useSlug';
 
 interface WorkspaceInfo {
   id: string; name: string; slug: string; description?: string; plan?: string; logoUrl?: string;
@@ -29,9 +30,10 @@ export default function WorkspaceSettingsPage() {
   const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
   const [loadingInvites, setLoadingInvites] = useState(false);
 
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetchData = useCallback(async () => {
+    if (!slug) { setLoading(false); return; }
     try {
       setLoading(true);
       const [w, m, r] = await Promise.all([
@@ -39,17 +41,18 @@ export default function WorkspaceSettingsPage() {
         roleService.getMembers(slug).catch(() => []),
         roleService.getRoles(slug).catch(() => []),
       ]);
-      if (w) { setWs(w); setName(w.name); setDescription(w.description || ""); }
+      if (w) { setWs(w); setName(w.name || ""); setDescription(w.description || ""); }
       setMemberCount(m.length);
       setRoles(r);
       if (r.length > 0 && !inviteRoleId) {
-        setInviteRoleId(r.find((role: Role) => role.name === "Member")?.id || r[0].id);
+        setInviteRoleId(r.find((role: Role) => role.name === "Staff")?.id || r[0].id);
       }
     } catch { /* ignore */ }
     finally { setLoading(false); }
   }, [slug]);
 
   const fetchInvitations = useCallback(async () => {
+    if (!slug) return;
     try {
       setLoadingInvites(true);
       const inv = await workspaceService.getInvitations(slug);
@@ -138,7 +141,7 @@ export default function WorkspaceSettingsPage() {
         </div>
 
         <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <button onClick={handleSave} disabled={saving || !name.trim()}
+          <button onClick={handleSave} disabled={saving || !(name || '').trim()}
             className="px-5 py-2.5 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 flex items-center gap-2 transition-colors">
             {saving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             Save Changes

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { taskService } from "@/services/taskService";
 import { projectService } from "@/services/projectService";
+import { useSlug } from '@/hooks/useSlug';
 
 interface SearchResult {
   id: string;
@@ -55,7 +56,7 @@ export default function SearchModal({ isOpen, onClose }: { isOpen: boolean; onCl
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   useEffect(() => {
     if (isOpen) {

@@ -6,6 +6,7 @@ import { projectService, Project } from "@/services/projectService";
 import { roleService } from "@/services/roleService";
 import { Task } from "@/types/task";
 import { WorkspaceMember } from "@/types/roles";
+import { useSlug } from '@/hooks/useSlug';
 
 const STATUS_OPTIONS = [
   { value: "", label: "All Statuses" },
@@ -44,7 +45,7 @@ export default function TaskListPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.projectId as string;
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -56,6 +57,7 @@ export default function TaskListPage() {
   const [assigneeFilter, setAssigneeFilter] = useState("");
 
   const fetchTasks = useCallback(async () => {
+    if (!slug) { setLoading(false); return; }
     try {
       setLoading(true);
       const queryParams: { status?: string; priority?: string; assigneeId?: string; search?: string } = {};

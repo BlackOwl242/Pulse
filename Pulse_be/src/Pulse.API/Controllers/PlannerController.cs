@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Pulse.API.Authorization;
 using Pulse.API.Data;
 using Pulse.API.Models.Entities.Planner;
 using Pulse.API.Models.Enums;
@@ -11,6 +12,7 @@ namespace Pulse.API.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/planner")]
 [Authorize]
+[RequireWorkspaceMember]
 public class PlannerController : ControllerBase
 {
     private readonly ApplicationDbContext _db;

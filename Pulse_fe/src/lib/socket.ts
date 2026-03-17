@@ -1,4 +1,5 @@
 import * as signalR from '@microsoft/signalr';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5182';
 
@@ -6,11 +7,9 @@ let notificationConnection: signalR.HubConnection | null = null;
 let chatConnection: signalR.HubConnection | null = null;
 
 function createConnection(hubPath: string): signalR.HubConnection {
-    const token = localStorage.getItem('access_token');
-
     return new signalR.HubConnectionBuilder()
         .withUrl(`${API_BASE_URL}/hubs/${hubPath}`, {
-            accessTokenFactory: () => token || '',
+            accessTokenFactory: () => useAuthStore.getState().accessToken || '',
         })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
         .configureLogging(signalR.LogLevel.Information)

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import api from '@/services/api';
 import { Workspace } from '@/types/workspace';
 
 interface WorkspaceState {
@@ -11,14 +12,26 @@ interface WorkspaceState {
     addWorkspace: (workspace: Workspace) => void;
     updateWorkspace: (id: string, updates: Partial<Workspace>) => void;
     setLoading: (loading: boolean) => void;
+    fetchWorkspaces: () => Promise<Workspace[]>;
+    clear: () => void;
 }
 
-export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
+/**
+ * Workspace store — NO localStorage persistence.
+ * All workspace data is in memory only, fetched from API on each session.
+ */
+export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     workspaces: [],
     currentWorkspace: null,
     isLoading: false,
 
-    setWorkspaces: (workspaces) => set({ workspaces }),
+    setWorkspaces: (workspaces) => {
+        set({ workspaces });
+        // Auto-select first workspace if no current one
+        if (!get().currentWorkspace && workspaces.length > 0) {
+            set({ currentWorkspace: workspaces[0] });
+        }
+    },
 
     setCurrentWorkspace: (currentWorkspace) => set({ currentWorkspace }),
 
@@ -35,4 +48,25 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
         })),
 
     setLoading: (isLoading) => set({ isLoading }),
+
+    fetchWorkspaces: async () => {
+        set({ isLoading: true });
+        try {
+            const { data } = await api.get('/workspaces');
+            const workspaces = data as Workspace[];
+            set({ workspaces, isLoading: false });
+
+            // Auto-select first workspace if no current one
+            if (!get().currentWorkspace && workspaces.length > 0) {
+                set({ currentWorkspace: workspaces[0] });
+            }
+
+            return workspaces;
+        } catch {
+            set({ isLoading: false });
+            return [];
+        }
+    },
+
+    clear: () => set({ currentWorkspace: null, workspaces: [] }),
 }));

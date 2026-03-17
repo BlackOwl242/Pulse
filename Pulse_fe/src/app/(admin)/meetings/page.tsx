@@ -4,6 +4,7 @@ import DateTimePicker from "@/components/ui/DateTimePicker";
 import { meetingService, Meeting } from "@/services/meetingService";
 import { roleService } from "@/services/roleService";
 import { WorkspaceMember } from "@/types/roles";
+import { useSlug } from '@/hooks/useSlug';
 
 const STATUS_MAP: Record<number, { label: string; cls: string }> = {
   0: { label: "Proposed", cls: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400" },
@@ -27,7 +28,7 @@ export default function MeetingsPage() {
   const [showParticipantPicker, setShowParticipantPicker] = useState(false);
   const [participantSearch, setParticipantSearch] = useState("");
   const participantInputRef = useRef<HTMLInputElement>(null);
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetchData = useCallback(async () => {
     setLoading(true);

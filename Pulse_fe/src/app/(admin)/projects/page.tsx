@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { projectService, Project, CreateProjectRequest } from "@/services/projectService";
+import { useSlug } from '@/hooks/useSlug';
 
 const PROJECT_COLORS = [
   "#6366f1", "#10b981", "#f59e0b", "#ef4444", "#3b82f6",
@@ -20,7 +21,7 @@ export default function ProjectsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetchProjects = useCallback(async () => {
     try {

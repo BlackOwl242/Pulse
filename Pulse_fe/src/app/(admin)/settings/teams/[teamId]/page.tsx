@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { teamService, Team, TeamMemberInfo } from "@/services/teamService";
 import { roleService } from "@/services/roleService";
 import { WorkspaceMember } from "@/types/roles";
+import { useSlug } from '@/hooks/useSlug';
 
 const ROLE_OPTIONS = ["lead", "member", "viewer"];
 
@@ -11,7 +12,7 @@ export default function TeamDetailPage() {
   const params = useParams();
   const router = useRouter();
   const teamId = params.teamId as string;
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const [team, setTeam] = useState<Team | null>(null);
   const [allMembers, setAllMembers] = useState<WorkspaceMember[]>([]);
@@ -24,6 +25,7 @@ export default function TeamDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
+    if (!slug) { setLoading(false); return; }
     try {
       setLoading(true);
       const [t, m] = await Promise.all([

@@ -11,6 +11,7 @@ import { checklistService, Checklist } from "@/services/checklistService";
 import { attachmentService, Attachment } from "@/services/attachmentService";
 import { Task, BoardColumn } from "@/types/task";
 import { WorkspaceMember } from "@/types/roles";
+import { useSlug } from '@/hooks/useSlug';
 
 // Backend sends status as integers (no JsonStringEnumConverter)
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; statusInt: number }> = {
@@ -33,7 +34,7 @@ export default function ProjectBoardPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.projectId as string;
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const [project, setProject] = useState<Project | null>(null);
   const [columns, setColumns] = useState<BoardColumn[]>([]);
@@ -75,6 +76,7 @@ export default function ProjectBoardPage() {
   const [uploading, setUploading] = useState(false);
 
   const fetchBoard = useCallback(async (showLoading = true) => {
+    if (!slug) { setLoading(false); return; }
     try {
       if (showLoading) setLoading(true);
       const [proj, board, mems] = await Promise.all([

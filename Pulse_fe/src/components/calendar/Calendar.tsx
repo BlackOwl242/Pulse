@@ -5,6 +5,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import {
+import { useSlug } from '@/hooks/useSlug';
   EventInput,
   EventClickArg,
   EventContentArg,
@@ -33,7 +34,7 @@ const TYPE_CONFIG: Record<string, { label: string; emoji: string; cls: string; f
 };
 
 const Calendar: React.FC = () => {
-  const slug = "pulse-demo";
+  const slug = useSlug();
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [currentMonth, setCurrentMonth] = useState(() => ({ m: new Date().getMonth() + 1, y: new Date().getFullYear() }));
   const calendarRef = useRef<FullCalendar>(null);

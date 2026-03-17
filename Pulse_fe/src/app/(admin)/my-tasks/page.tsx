@@ -5,6 +5,7 @@ import { projectService, Project } from "@/services/projectService";
 import { taskService } from "@/services/taskService";
 import { Task, BoardColumn } from "@/types/task";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useSlug } from '@/hooks/useSlug';
 
 const STATUS_BADGES: Record<number, { label: string; cls: string }> = {
   0: { label: "To Do",       cls: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
@@ -30,7 +31,7 @@ export default function MyTasksPage() {
   const [groups, setGroups] = useState<GroupedTasks[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetchMyTasks = useCallback(async () => {
     setLoading(true);

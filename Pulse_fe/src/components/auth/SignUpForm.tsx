@@ -38,7 +38,7 @@ export default function SignUpForm() {
         firstName,
         lastName,
       });
-      setAuth(res.user, res.accessToken, res.refreshToken);
+      setAuth(res.user, res.accessToken);
       router.push("/dashboard");
     } catch (err: unknown) {
       const message =

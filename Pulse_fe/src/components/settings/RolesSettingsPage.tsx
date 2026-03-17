@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { roleService } from "@/services/roleService";
 import { Role, Permission, PermissionGroup } from "@/types/roles";
+import { useSlug } from '@/hooks/useSlug';
 
 // ===== Permission Module Labels & Icons =====
 const MODULE_ICONS: Record<string, React.ReactNode> = {
@@ -51,10 +52,10 @@ export default function RolesSettingsPage() {
   // Delete confirmation
   const [deletingRole, setDeletingRole] = useState<Role | null>(null);
 
-  // TODO: Replace with actual workspace slug from context
-  const workspaceSlug = "pulse-demo";
+  const workspaceSlug = useSlug();
 
   const fetchData = useCallback(async () => {
+    if (!workspaceSlug) { setLoading(false); return; }
     try {
       setLoading(true);
       const [rolesData, permsData] = await Promise.all([

@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import DateTimePicker from "@/components/ui/DateTimePicker";
 import api from "@/services/api";
+import { useSlug } from '@/hooks/useSlug';
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -26,7 +27,7 @@ export default function CalendarPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [items, setItems] = useState<CalItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   // Day detail modal
   const [dayModalOpen, setDayModalOpen] = useState(false);

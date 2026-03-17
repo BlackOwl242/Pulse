@@ -28,7 +28,7 @@ export default function SignInForm() {
 
     try {
       const res = await authService.login({ email, password });
-      setAuth(res.user, res.accessToken, res.refreshToken);
+      setAuth(res.user, res.accessToken);
       router.push("/dashboard");
     } catch (err: unknown) {
       const message =

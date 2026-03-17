@@ -25,6 +25,8 @@ public class WorkspaceDto
     public WorkspacePlan Plan { get; set; }
     public int MemberCount { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? RoleName { get; set; }
+    public bool IsOwner { get; set; }
 }
 
 public class InviteMemberRequest

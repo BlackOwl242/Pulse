@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { teamService, Team, CreateTeamRequest } from "@/services/teamService";
+import { useSlug } from '@/hooks/useSlug';
 
 const TEAM_COLORS = [
   "#6366f1", "#10b981", "#f59e0b", "#ef4444", "#3b82f6",
@@ -17,7 +18,7 @@ export default function TeamsPage() {
   const [form, setForm] = useState<CreateTeamRequest>({ name: "", description: "", color: TEAM_COLORS[0] });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetchData = useCallback(async () => {
     try {

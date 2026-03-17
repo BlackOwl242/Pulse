@@ -8,6 +8,7 @@ import ChatSidebar from "@/components/chats/ChatSidebar";
 import ChatBox from "@/components/chats/ChatBox";
 import CreateGroupChatModal from "@/components/chats/CreateGroupChatModal";
 import { connectChat, joinChatChannel, leaveChatChannel, disconnectAll } from "@/lib/socket";
+import { useSlug } from '@/hooks/useSlug';
 
 export default function ChatPage() {
   const user = useAuthStore((s) => s.user);
@@ -22,7 +23,7 @@ export default function ChatPage() {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeChannelRef = useRef<string | null>(null);
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetchChannels = useCallback(async () => {
     try { 

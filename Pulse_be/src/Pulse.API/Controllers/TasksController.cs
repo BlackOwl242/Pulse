@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Pulse.API.Authorization;
 using Pulse.API.Data;
 using Pulse.API.Models.DTOs.Task;
 using Pulse.API.Models.Entities.TaskManagement;
@@ -12,6 +13,7 @@ namespace Pulse.API.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/projects/{projectId}/[controller]")]
 [Authorize]
+[RequireWorkspaceMember]
 public class TasksController : ControllerBase
 {
     private readonly ApplicationDbContext _db;

@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { aiService, AIConversation, AIMsg } from "@/services/aiService";
 import AiLayout from "@/components/ai/AiLayout";
+import { useSlug } from '@/hooks/useSlug';
 
 export default function AIAssistantPage() {
   const [conversations, setConversations] = useState<AIConversation[]>([]);
@@ -11,7 +12,7 @@ export default function AIAssistantPage() {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetchConvs = useCallback(async () => {
     try { setConversations(await aiService.getConversations(slug)); } catch {}

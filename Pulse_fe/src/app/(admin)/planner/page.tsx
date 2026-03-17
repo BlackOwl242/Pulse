@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { plannerService, PlannerBlock } from "@/services/plannerService";
+import { useSlug } from '@/hooks/useSlug';
 
 const BLOCK_COLORS: Record<number, { bg: string; border: string; text: string; dot: string; label: string }> = {
   0: { bg: "bg-brand-50 dark:bg-brand-500/10", border: "border-brand-200 dark:border-brand-500/30", text: "text-brand-700 dark:text-brand-300", dot: "bg-brand-500", label: "Task" },
@@ -22,7 +23,7 @@ export default function PlannerPage() {
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { m: d.getMonth(), y: d.getFullYear() }; });
   const calRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState({ title: "", startTime: "", endTime: "", type: 0 as number });
-  const slug = "pulse-demo";
+  const slug = useSlug();
 
   const fetchBlocks = useCallback(async () => {
     setLoading(true);

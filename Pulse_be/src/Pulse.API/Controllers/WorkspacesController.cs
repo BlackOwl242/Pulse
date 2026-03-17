@@ -37,6 +37,7 @@ public class WorkspacesController : ControllerBase
         var userId = _currentUser.UserId!.Value;
         var workspaces = await _db.UserWorkspaceRoles
             .Where(uwr => uwr.UserId == userId)
+            .Include(uwr => uwr.Role)
             .Select(uwr => new WorkspaceDto
             {
                 Id = uwr.Workspace.Id,
@@ -46,7 +47,9 @@ public class WorkspacesController : ControllerBase
                 Description = uwr.Workspace.Description,
                 Plan = uwr.Workspace.Plan,
                 MemberCount = uwr.Workspace.Members.Count,
-                CreatedAt = uwr.Workspace.CreatedAt
+                CreatedAt = uwr.Workspace.CreatedAt,
+                RoleName = uwr.Role.Name,
+                IsOwner = uwr.Workspace.OwnerId == userId
             })
             .ToListAsync();
 
@@ -125,6 +128,8 @@ public class WorkspacesController : ControllerBase
     /// Update workspace
     /// </summary>
     [HttpPut("{slug}")]
+    [RequireWorkspaceMember]
+    [RequirePermission("workspace.manage")]
     public async Task<IActionResult> Update(string slug, [FromBody] UpdateWorkspaceRequest request)
     {
         var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);

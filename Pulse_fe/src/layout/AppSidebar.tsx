@@ -10,6 +10,7 @@ import {
   TaskIcon,
   UserCircleIcon,
 } from "../icons/index";
+import WorkspaceSwitcher from "@/components/workspace/WorkspaceSwitcher";
 
 type NavItem = {
   name: string;
@@ -121,6 +122,7 @@ const navItems: NavItem[] = [
     ),
     subItems: [
       { name: "Workspace", path: "/settings/workspace" },
+      { name: "My Workspaces", path: "/settings/workspaces" },
       { name: "Roles & Permissions", path: "/settings/roles" },
       { name: "Teams", path: "/settings/teams" },
     ],
@@ -361,26 +363,9 @@ const AppSidebar: React.FC = () => {
         className={`py-5 flex ${!isExpanded && !isHovered ? "xl:justify-center" : "justify-start"
           }`}
       >
-        <Link href="/dashboard">
-          {isExpanded || isHovered || isMobileOpen ? (
-            <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-500 shrink-0">
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-                Pulse
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-500">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-              </svg>
-            </div>
-          )}
-        </Link>
+        <div className="w-full">
+          <WorkspaceSwitcher collapsed={!isExpanded && !isHovered && !isMobileOpen} />
+        </div>
       </div>
       <div className="flex flex-col overflow-y-auto  duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
