@@ -6,10 +6,11 @@ type Toast = {
   title: string;
   message?: string;
   type?: "info" | "success" | "warning" | "error";
+  onClick?: () => void;
 };
 
 type ToastContextType = {
-  showToast: (title: string, message?: string, type?: Toast["type"]) => void;
+  showToast: (title: string, message?: string, type?: Toast["type"], onClick?: () => void) => void;
 };
 
 const ToastContext = createContext<ToastContextType>({ showToast: () => {} });
@@ -21,18 +22,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const counterRef = useRef(0);
 
   const showToast = useCallback(
-    (title: string, message?: string, type: Toast["type"] = "info") => {
+    (title: string, message?: string, type: Toast["type"] = "info", onClick?: () => void) => {
       const id = `toast-${++counterRef.current}`;
-      setToasts((prev) => [...prev, { id, title, message, type }]);
+      setToasts((prev) => [...prev, { id, title, message, type, onClick }]);
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 5000);
+      }, onClick ? 8000 : 5000); // Longer dismiss for clickable toasts
     },
     []
   );
 
   const dismiss = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleToastClick = (toast: Toast) => {
+    if (toast.onClick) {
+      toast.onClick();
+      dismiss(toast.id);
+    }
   };
 
   const iconMap = {
@@ -62,13 +70,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ showToast }}>
       {children}
 
-      {/* Toast container — fixed top-right */}
+      {/* Toast container — fixed bottom-right */}
       <div className="fixed bottom-4 right-4 z-[9999] flex flex-col-reverse gap-3 pointer-events-none">
         {toasts.map((toast, i) => (
           <div
             key={toast.id}
-            className="pointer-events-auto animate-slide-in-right flex items-start gap-3 w-[360px] max-w-[calc(100vw-2rem)] p-4 rounded-xl shadow-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 backdrop-blur-sm"
+            className={`pointer-events-auto animate-slide-in-right flex items-start gap-3 w-[360px] max-w-[calc(100vw-2rem)] p-4 rounded-xl shadow-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 backdrop-blur-sm ${toast.onClick ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" : ""}`}
             style={{ animationDelay: `${i * 50}ms` }}
+            onClick={() => handleToastClick(toast)}
           >
             <div className="shrink-0 mt-0.5">
               {iconMap[toast.type || "info"]}
@@ -82,9 +91,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   {toast.message}
                 </p>
               )}
+              {toast.onClick && (
+                <p className="text-[10px] text-brand-500 font-medium mt-1">Click to respond</p>
+              )}
             </div>
             <button
-              onClick={() => dismiss(toast.id)}
+              onClick={(e) => { e.stopPropagation(); dismiss(toast.id); }}
               className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">

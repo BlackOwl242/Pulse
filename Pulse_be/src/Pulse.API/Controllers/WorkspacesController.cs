@@ -238,8 +238,19 @@ public class WorkspacesController : ControllerBase
         _db.Invitations.Add(invitation);
         await _db.SaveChangesAsync();
 
-        // Notify existing workspace members about new invite
         var inviter = await _db.Users.FindAsync(_currentUser.UserId!.Value);
+
+        // Notify the invited user if they exist in the system
+        var invitedUser = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        if (invitedUser != null)
+        {
+            await _notifications.SendAsync(invitedUser.Id, workspace.Id, NotificationType.Invitation,
+                $"{inviter?.FirstName} {inviter?.LastName} invited you to {workspace.Name}",
+                $"You've been invited to join the workspace \"{workspace.Name}\"",
+                "invitation", invitation.Id, _currentUser.UserId!.Value);
+        }
+
+        // Also notify existing workspace members about new invite
         var existingMemberIds = await _db.UserWorkspaceRoles
             .Where(uwr => uwr.WorkspaceId == workspace.Id && uwr.UserId != _currentUser.UserId!.Value)
             .Select(uwr => uwr.UserId)
@@ -348,6 +359,80 @@ public class WorkspacesController : ControllerBase
         }
 
         return Ok(new { message = "Member added", userId = user.Id, email = user.Email, firstName = user.FirstName, lastName = user.LastName });
+    }
+
+    /// <summary>
+    /// Accept a workspace invitation (called by the invited user)
+    /// </summary>
+    [HttpPost("invitations/{invitationId:guid}/accept")]
+    public async Task<IActionResult> AcceptInvitation(Guid invitationId)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return Unauthorized();
+
+        var invitation = await _db.Invitations
+            .Include(i => i.Workspace)
+            .Include(i => i.Role)
+            .FirstOrDefaultAsync(i => i.Id == invitationId && i.Email == user.Email);
+
+        if (invitation == null) return NotFound(new { message = "Invitation not found" });
+        if (invitation.Status != InvitationStatus.Pending) return BadRequest(new { message = "Invitation is no longer valid" });
+        if (invitation.ExpiresAt < DateTime.UtcNow) return BadRequest(new { message = "Invitation has expired" });
+
+        // Check if already a member
+        var alreadyMember = await _db.UserWorkspaceRoles
+            .AnyAsync(uwr => uwr.UserId == userId && uwr.WorkspaceId == invitation.WorkspaceId);
+        if (alreadyMember) return BadRequest(new { message = "You are already a member of this workspace" });
+
+        // Add user to workspace with the invited role
+        _db.UserWorkspaceRoles.Add(new UserWorkspaceRole
+        {
+            UserId = userId,
+            WorkspaceId = invitation.WorkspaceId,
+            RoleId = invitation.RoleId
+        });
+
+        invitation.Status = InvitationStatus.Accepted;
+        invitation.AcceptedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        // Notify workspace members about new member
+        var memberIds = await _db.UserWorkspaceRoles
+            .Where(uwr => uwr.WorkspaceId == invitation.WorkspaceId && uwr.UserId != userId)
+            .Select(uwr => uwr.UserId)
+            .ToListAsync();
+        foreach (var mid in memberIds)
+        {
+            await _notifications.SendAsync(mid, invitation.WorkspaceId, NotificationType.Mention,
+                $"{user.FirstName} joined {invitation.Workspace.Name}",
+                $"{user.FirstName} {user.LastName} accepted an invitation",
+                "workspace", invitation.WorkspaceId, userId);
+        }
+
+        return Ok(new { message = "Invitation accepted", workspaceSlug = invitation.Workspace.Slug, workspaceName = invitation.Workspace.Name });
+    }
+
+    /// <summary>
+    /// Decline a workspace invitation (called by the invited user)
+    /// </summary>
+    [HttpPost("invitations/{invitationId:guid}/decline")]
+    public async Task<IActionResult> DeclineInvitation(Guid invitationId)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return Unauthorized();
+
+        var invitation = await _db.Invitations
+            .FirstOrDefaultAsync(i => i.Id == invitationId && i.Email == user.Email);
+
+        if (invitation == null) return NotFound(new { message = "Invitation not found" });
+        if (invitation.Status != InvitationStatus.Pending) return BadRequest(new { message = "Invitation is no longer valid" });
+
+        invitation.Status = InvitationStatus.Revoked;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Invitation declined" });
     }
 
     private static string GenerateSlug(string name)

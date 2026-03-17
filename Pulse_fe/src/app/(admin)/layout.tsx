@@ -8,6 +8,7 @@ import Backdrop from "@/layout/Backdrop";
 import AuthGuard from "@/components/auth/AuthGuard";
 import { ToastProvider } from "@/components/ui/toast/ToastProvider";
 import { useWorkspaceStore } from "@/stores/useWorkspaceStore";
+import InvitationDialog from "@/components/workspace/InvitationDialog";
 
 export default function AdminLayout({
   children,
@@ -58,6 +59,7 @@ export default function AdminLayout({
             </div>
           </div>
         </div>
+        <InvitationDialog />
       </ToastProvider>
     </AuthGuard>
   );

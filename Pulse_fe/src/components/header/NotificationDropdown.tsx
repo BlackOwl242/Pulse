@@ -8,6 +8,7 @@ import { connectNotifications } from "@/lib/socket";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import { useNotificationPrefs, NOTIF_TYPE_TO_SECTION } from "@/stores/useNotificationPrefs";
 import { useSlug } from '@/hooks/useSlug';
+import { useInvitationDialog } from "@/stores/useInvitationDialog";
 
 const NOTIF_LABELS: Record<number, string> = {
   0: "mentioned you",
@@ -37,6 +38,7 @@ export default function NotificationDropdown() {
   const slug = useSlug();
   const connectedRef = useRef(false);
   const { showToast } = useToast();
+  const openInviteDialog = useInvitationDialog((s) => s.open);
 
   const fetchNotifications = useCallback(async () => {
     if (!slug) return;
@@ -75,9 +77,24 @@ export default function NotificationDropdown() {
         setNotifications((prev) => [notif, ...prev]);
         setUnreadCount((c) => c + 1);
 
+        // Dispatch event so workspace settings page can re-fetch (e.g. invitation accepted)
+        if (data.entityType === "workspace" || data.entityType === "invitation") {
+          window.dispatchEvent(new Event("workspace-updated"));
+        }
+
         // Show toast only if toast is enabled for this section
         if (!sectionPref || sectionPref.toast) {
-          showToast(data.title ?? NOTIF_LABELS[data.type] ?? "New notification", data.content);
+          const toastTitle = data.title ?? NOTIF_LABELS[data.type] ?? "New notification";
+          const toastMsg = data.content;
+
+          // If it's an invitation, make the toast clickable
+          if (data.entityType === "invitation" && data.entityId) {
+            showToast(toastTitle, toastMsg, "info", () => {
+              useInvitationDialog.getState().open(data.entityId, toastTitle, toastMsg || "");
+            });
+          } else {
+            showToast(toastTitle, toastMsg);
+          }
         }
       }).catch(console.error);
     }
@@ -106,6 +123,14 @@ export default function NotificationDropdown() {
         setUnreadCount((c) => Math.max(0, c - 1));
       } catch { /* ignore */ }
     }
+
+    // If it's an invitation notification, open the global invitation dialog
+    if (n.entityType === "invitation" && n.entityId) {
+      closeDropdown();
+      openInviteDialog(n.entityId, n.title, n.content || "");
+      return;
+    }
+
     closeDropdown();
     // Navigate to entity
     if (n.entityType === "task" && n.entityId) {
@@ -193,7 +218,7 @@ export default function NotificationDropdown() {
                       )}
                       <span>{NOTIF_LABELS[n.type] ?? n.title}</span>
                       {n.content && (
-                        <span className="font-medium text-gray-800 dark:text-white/90"> "{n.content}"</span>
+                        <span className="font-medium text-gray-800 dark:text-white/90"> &quot;{n.content}&quot;</span>
                       )}
                     </span>
                     <span className="text-gray-400 text-theme-xs dark:text-gray-500">{timeAgo(n.createdAt)}</span>

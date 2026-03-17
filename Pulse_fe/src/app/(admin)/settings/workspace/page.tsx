@@ -32,6 +32,19 @@ export default function WorkspaceSettingsPage() {
 
   const slug = useSlug();
 
+  // Reset local state when workspace changes
+  useEffect(() => {
+    setWs(null);
+    setName("");
+    setDescription("");
+    setMemberCount(0);
+    setRoles([]);
+    setInviteRoleId("");
+    setInvitations([]);
+    setInviteMsg(null);
+    setSaved(false);
+  }, [slug]);
+
   const fetchData = useCallback(async () => {
     if (!slug) { setLoading(false); return; }
     try {
@@ -44,7 +57,7 @@ export default function WorkspaceSettingsPage() {
       if (w) { setWs(w); setName(w.name || ""); setDescription(w.description || ""); }
       setMemberCount(m.length);
       setRoles(r);
-      if (r.length > 0 && !inviteRoleId) {
+      if (r.length > 0) {
         setInviteRoleId(r.find((role: Role) => role.name === "Staff")?.id || r[0].id);
       }
     } catch { /* ignore */ }
@@ -62,6 +75,13 @@ export default function WorkspaceSettingsPage() {
   }, [slug]);
 
   useEffect(() => { fetchData(); fetchInvitations(); }, [fetchData, fetchInvitations]);
+
+  // Re-fetch invitations when a workspace-updated event fires (e.g. invitation accepted)
+  useEffect(() => {
+    const handler = () => { fetchData(); fetchInvitations(); };
+    window.addEventListener("workspace-updated", handler);
+    return () => window.removeEventListener("workspace-updated", handler);
+  }, [fetchData, fetchInvitations]);
 
   const handleSave = async () => {
     if (!ws) return;

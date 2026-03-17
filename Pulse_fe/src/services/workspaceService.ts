@@ -36,4 +36,10 @@ export const workspaceService = {
 
     addMemberByEmail: (slug: string, data: { email: string; roleId: string }) =>
         api.post(`/workspaces/${slug}/members/add`, data).then((res) => res.data),
+
+    acceptInvitation: (invitationId: string) =>
+        api.post(`/workspaces/invitations/${invitationId}/accept`).then((res) => res.data),
+
+    declineInvitation: (invitationId: string) =>
+        api.post(`/workspaces/invitations/${invitationId}/decline`).then((res) => res.data),
 };
