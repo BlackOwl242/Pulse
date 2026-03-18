@@ -169,6 +169,11 @@ export default function NotificationDropdown() {
             )}
           </h5>
           <div className="flex items-center gap-2">
+            {notifications.length > 0 && (
+              <button onClick={async () => { try { await notificationService.clearAll(slug); setNotifications([]); setUnreadCount(0); } catch {} }} className="text-xs text-red-400 hover:text-red-500 font-medium">
+                Clear all
+              </button>
+            )}
             {unreadCount > 0 && (
               <button onClick={markAllRead} className="text-xs text-brand-500 hover:text-brand-600 font-medium">
                 Mark all read

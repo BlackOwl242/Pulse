@@ -171,6 +171,35 @@ public class WorkspacesController : ControllerBase
     }
 
     /// <summary>
+    /// Remove a member from the workspace (owner/admin only, cannot remove owner)
+    /// </summary>
+    [HttpDelete("{slug}/members/{userId:guid}")]
+    [RequirePermission("workspace.manage")]
+    public async Task<IActionResult> RemoveMember(string slug, Guid userId)
+    {
+        var currentUserId = _currentUser.UserId!.Value;
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        if (workspace.OwnerId == userId)
+            return BadRequest(new { message = "Cannot remove the workspace owner" });
+
+        var membership = await _db.UserWorkspaceRoles
+            .FirstOrDefaultAsync(uwr => uwr.UserId == userId && uwr.WorkspaceId == workspace.Id);
+        if (membership == null) return NotFound(new { message = "Member not found" });
+
+        _db.UserWorkspaceRoles.Remove(membership);
+        await _db.SaveChangesAsync();
+
+        // Notify the removed user
+        var actor = await _db.Users.FindAsync(currentUserId);
+        await _notifications.SendAsync(userId, workspace.Id, NotificationType.StatusChanged,
+            $"You were removed from {workspace.Name}",
+            $"Removed by {actor?.FirstName}",
+            "workspace", workspace.Id, currentUserId);
+
+        return Ok(new { message = "Member removed" });
+    }
     /// Change a member's role in the workspace
     /// </summary>
     [HttpPut("{slug}/members/{userId:guid}/role")]
@@ -576,6 +605,38 @@ public class WorkspacesController : ControllerBase
         slug = Regex.Replace(slug, @"-+", "-");
         slug = slug.Trim('-');
         return $"{slug}-{Guid.NewGuid().ToString("N")[..6]}";
+    }
+
+    /// <summary>
+    /// Global search across tasks and projects in a workspace
+    /// </summary>
+    [HttpGet("{slug}/search")]
+    [RequireWorkspaceMember]
+    public async Task<IActionResult> Search(string slug, [FromQuery] string q, [FromQuery] int limit = 20)
+    {
+        if (string.IsNullOrWhiteSpace(q)) return Ok(new { tasks = Array.Empty<object>(), projects = Array.Empty<object>() });
+
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        var tasks = await _db.Tasks
+            .Where(t => t.Project.WorkspaceId == workspace.Id && !t.IsDeleted &&
+                (EF.Functions.ILike(t.Title, $"%{q}%") || EF.Functions.ILike(t.Description ?? "", $"%{q}%")))
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(limit)
+            .Select(t => new {
+                t.Id, t.Title, t.Status, t.Priority,
+                ProjectName = t.Project.Name, t.ProjectId
+            }).ToListAsync();
+
+        var projects = await _db.Projects
+            .Where(p => p.WorkspaceId == workspace.Id && !p.IsDeleted &&
+                (EF.Functions.ILike(p.Name, $"%{q}%") || EF.Functions.ILike(p.Description ?? "", $"%{q}%")))
+            .Take(limit)
+            .Select(p => new { p.Id, p.Name, p.Color, p.Icon, p.Status })
+            .ToListAsync();
+
+        return Ok(new { tasks, projects });
     }
 }
 

@@ -41,6 +41,99 @@ const PRIORITY_BADGES: Record<number, { label: string; cls: string }> = {
   4: { label: "Urgent", cls: "text-red-500 bg-red-50 dark:bg-red-500/10" },
 };
 
+const STATUS_COLORS: Record<number, string> = {
+  0: "#9ca3af", 1: "#3b82f6", 2: "#f59e0b", 3: "#22c55e", 4: "#ef4444",
+};
+
+type ViewMode = "list" | "timeline";
+
+/* ──── Gantt helpers ──── */
+function daysBetween(a: Date, b: Date) { return Math.ceil((b.getTime() - a.getTime()) / 86400000); }
+
+function GanttChart({ tasks }: { tasks: Task[] }) {
+  const ganttTasks = tasks.filter(t => t.startDate || t.deadline);
+  if (ganttTasks.length === 0) return (
+    <div className="p-8 text-center text-sm text-gray-400 dark:text-gray-500">
+      No tasks with dates. Set start date or deadline on tasks to see the timeline.
+    </div>
+  );
+
+  const allDates = ganttTasks.flatMap(t => [t.startDate, t.deadline].filter(Boolean) as string[]).map(d => new Date(d));
+  const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+  const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+  // Pad 2 days each side
+  minDate.setDate(minDate.getDate() - 2);
+  maxDate.setDate(maxDate.getDate() + 2);
+  const totalDays = daysBetween(minDate, maxDate) || 1;
+
+  // Generate day headers (show every Nth day depending on range)
+  const dayHeaders: { label: string; isWeekend: boolean }[] = [];
+  for (let i = 0; i <= totalDays; i++) {
+    const d = new Date(minDate);
+    d.setDate(d.getDate() + i);
+    dayHeaders.push({ label: `${d.getDate()}/${d.getMonth() + 1}`, isWeekend: d.getDay() === 0 || d.getDay() === 6 });
+  }
+  const showEvery = totalDays > 30 ? 7 : totalDays > 14 ? 3 : 1;
+
+  const today = new Date();
+  const todayOffset = daysBetween(minDate, today);
+  const todayPct = (todayOffset / totalDays) * 100;
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[800px]">
+        {/* Day header row */}
+        <div className="flex border-b border-gray-200 dark:border-gray-800">
+          <div className="w-52 shrink-0 px-4 py-2 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Task</div>
+          <div className="flex-1 relative flex">
+            {dayHeaders.map((d, i) => (
+              <div key={i} className={`flex-1 min-w-[24px] text-center text-[9px] py-1.5 ${d.isWeekend ? 'bg-gray-50 dark:bg-gray-800/30' : ''} ${i % showEvery === 0 ? 'text-gray-500 dark:text-gray-400' : 'text-transparent'}`}>
+                {i % showEvery === 0 ? d.label : '.'}
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Task rows */}
+        {ganttTasks.map((task) => {
+          const start = task.startDate ? new Date(task.startDate) : task.deadline ? new Date(task.deadline) : minDate;
+          const end = task.deadline ? new Date(task.deadline) : task.startDate ? new Date(new Date(task.startDate).getTime() + 86400000 * 3) : maxDate;
+          const leftPct = (daysBetween(minDate, start) / totalDays) * 100;
+          const widthPct = Math.max(((daysBetween(start, end) || 1) / totalDays) * 100, 2);
+          const statusNum = Number(task.status) || 0;
+          const color = STATUS_COLORS[statusNum] || "#6366f1";
+
+          return (
+            <div key={task.id} className="flex items-center border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors group">
+              <div className="w-52 shrink-0 px-4 py-2.5 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                <span className="text-xs text-gray-800 dark:text-gray-200 truncate font-medium">{task.title}</span>
+              </div>
+              <div className="flex-1 relative h-8">
+                {/* Weekend stripes */}
+                {dayHeaders.map((d, i) => d.isWeekend ? (
+                  <div key={i} className="absolute top-0 bottom-0 bg-gray-50/50 dark:bg-gray-800/20" style={{ left: `${(i / totalDays) * 100}%`, width: `${100 / totalDays}%` }} />
+                ) : null)}
+                {/* Today line */}
+                {todayPct >= 0 && todayPct <= 100 && (
+                  <div className="absolute top-0 bottom-0 w-px bg-red-400 z-10" style={{ left: `${todayPct}%` }} />
+                )}
+                {/* Bar */}
+                <div
+                  className="absolute top-1.5 h-5 rounded-md opacity-80 group-hover:opacity-100 transition-opacity cursor-default"
+                  style={{ left: `${leftPct}%`, width: `${widthPct}%`, backgroundColor: color }}
+                  title={`${task.title}\n${task.startDate ? `Start: ${new Date(task.startDate).toLocaleDateString()}` : ''}\n${task.deadline ? `Due: ${new Date(task.deadline).toLocaleDateString()}` : ''}`}
+                >
+                  <span className="text-[9px] text-white font-medium px-1.5 truncate block leading-5">{task.title}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function TaskListPage() {
   const params = useParams();
   const router = useRouter();
@@ -55,6 +148,7 @@ export default function TaskListPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const fetchTasks = useCallback(async () => {
     if (!slug) { setLoading(false); return; }
@@ -98,15 +192,20 @@ export default function TaskListPage() {
           </>
         )}
 
-        {/* Toggle to Board */}
-        <div className="ml-auto flex items-center gap-2">
+        {/* View Toggle */}
+        <div className="ml-auto flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
           <button onClick={() => router.push(`/projects/${projectId}`)}
-            className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            Board View
+            className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-md transition-colors">
+            Board
           </button>
-          <span className="px-3 py-1.5 text-xs font-medium text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10 rounded-lg">
-            List View
-          </span>
+          <button onClick={() => setViewMode("list")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === 'list' ? 'text-brand-600 dark:text-brand-400 bg-white dark:bg-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}>
+            List
+          </button>
+          <button onClick={() => setViewMode("timeline")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === 'timeline' ? 'text-brand-600 dark:text-brand-400 bg-white dark:bg-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}>
+            Timeline
+          </button>
         </div>
       </div>
 
@@ -132,7 +231,7 @@ export default function TaskListPage() {
         </select>
       </div>
 
-      {/* Table */}
+      {/* Content */}
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
         {loading ? (
           <div className="p-8 flex justify-center">
@@ -142,6 +241,8 @@ export default function TaskListPage() {
           <div className="p-8 text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">No tasks found</p>
           </div>
+        ) : viewMode === "timeline" ? (
+          <GanttChart tasks={tasks} />
         ) : (
           <table className="w-full">
             <thead>

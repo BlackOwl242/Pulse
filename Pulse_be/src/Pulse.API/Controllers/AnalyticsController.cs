@@ -111,6 +111,49 @@ public class AnalyticsController : ControllerBase
             completionRate = tasks > 0 ? Math.Round((double)completedTasks / tasks * 100, 1) : 0
         });
     }
+
+    [HttpGet("export")]
+    public async Task<IActionResult> ExportCsv(string workspaceSlug)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace == null) return NotFound();
+
+        var tasksData = await _db.Tasks
+            .Where(t => t.Project.WorkspaceId == workspace.Id && !t.IsDeleted)
+            .Select(t => new
+            {
+                t.Title,
+                Project = t.Project.Name,
+                Status = t.Status.ToString(),
+                Priority = t.Priority.ToString(),
+                Assignee = t.Assignees.Any() ? t.Assignees.First().User.FirstName + " " + t.Assignees.First().User.LastName : "",
+                t.Deadline,
+                t.CreatedAt,
+                t.CompletedAt,
+            })
+            .ToListAsync();
+
+        var csv = new System.Text.StringBuilder();
+        // sep=, tells Excel the delimiter; all fields quoted for safety
+        csv.AppendLine("sep=,");
+        csv.AppendLine("\"Title\",\"Project\",\"Status\",\"Priority\",\"Assignee\",\"Deadline\",\"Created\",\"Completed\"");
+        foreach (var t in tasksData)
+        {
+            var title = (t.Title ?? "").Replace("\"", "\"\"");
+            var project = (t.Project ?? "").Replace("\"", "\"\"");
+            var assignee = (t.Assignee ?? "").Replace("\"", "\"\"");
+            csv.AppendLine($"\"{title}\",\"{project}\",\"{t.Status}\",\"{t.Priority}\",\"{assignee}\",\"{t.Deadline?.ToString("yyyy-MM-dd") ?? ""}\",\"{t.CreatedAt:yyyy-MM-dd}\",\"{t.CompletedAt?.ToString("yyyy-MM-dd") ?? ""}\"");
+        }
+
+        // Add UTF-8 BOM so Excel auto-detects encoding
+        var bom = System.Text.Encoding.UTF8.GetPreamble();
+        var content = System.Text.Encoding.UTF8.GetBytes(csv.ToString());
+        var result = new byte[bom.Length + content.Length];
+        bom.CopyTo(result, 0);
+        content.CopyTo(result, bom.Length);
+
+        return File(result, "text/csv", $"{workspaceSlug}-tasks-export.csv");
+    }
 }
 
 public class AddWidgetRequest

@@ -127,6 +127,28 @@ public class CommentsController : ControllerBase
                         $"New comment on task: {task.Title}",
                         entityType: "task", entityId: task.Id, actorId: userId);
                 }
+
+                // Parse @mentions and notify mentioned users
+                var mentionPattern = new System.Text.RegularExpressions.Regex(@"@(\w+)\s+(\w+)");
+                var mentions = mentionPattern.Matches(request.Content);
+                foreach (System.Text.RegularExpressions.Match mention in mentions)
+                {
+                    var firstName = mention.Groups[1].Value;
+                    var lastName = mention.Groups[2].Value;
+                    var mentionedUser = await _db.UserWorkspaceRoles
+                        .Where(m => m.WorkspaceId == workspace.Id &&
+                            EF.Functions.ILike(m.User.FirstName, firstName) &&
+                            EF.Functions.ILike(m.User.LastName, lastName))
+                        .Select(m => m.UserId)
+                        .FirstOrDefaultAsync();
+
+                    if (mentionedUser != default && mentionedUser != userId && !recipients.Contains(mentionedUser))
+                    {
+                        await _notifications.SendAsync(mentionedUser, workspace.Id, NotificationType.Mention,
+                            $"You were mentioned in a comment on task: {task.Title}",
+                            entityType: "task", entityId: task.Id, actorId: userId);
+                    }
+                }
             }
         }
 

@@ -16,6 +16,9 @@ export const workspaceService = {
     getAll: () =>
         api.get<Workspace[]>('/workspaces').then((res) => res.data),
 
+    search: (slug: string, q: string) =>
+        api.get(`/workspaces/${slug}/search`, { params: { q } }).then(r => r.data),
+
     getBySlug: (slug: string) =>
         api.get<Workspace>(`/workspaces/${slug}`).then((res) => res.data),
 
@@ -36,6 +39,9 @@ export const workspaceService = {
 
     addMemberByEmail: (slug: string, data: { email: string; roleId: string }) =>
         api.post(`/workspaces/${slug}/members/add`, data).then((res) => res.data),
+
+    removeMember: (slug: string, userId: string) =>
+        api.delete(`/workspaces/${slug}/members/${userId}`).then((res) => res.data),
 
     acceptInvitation: (invitationId: string) =>
         api.post(`/workspaces/invitations/${invitationId}/accept`).then((res) => res.data),

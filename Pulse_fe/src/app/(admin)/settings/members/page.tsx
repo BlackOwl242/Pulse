@@ -4,6 +4,8 @@ import { roleService } from "@/services/roleService";
 import { workspaceService } from "@/services/workspaceService";
 import { WorkspaceMember, Role } from "@/types/roles";
 import { useSlug } from '@/hooks/useSlug';
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useWorkspaceStore } from "@/stores/useWorkspaceStore";
 
 export default function MembersPage() {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
@@ -15,7 +17,11 @@ export default function MembersPage() {
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState("");
   const [inviteError, setInviteError] = useState("");
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<WorkspaceMember | null>(null);
   const slug = useSlug();
+  const currentUser = useAuthStore((s) => s.user);
+  const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
 
   const fetchData = useCallback(async () => {
     try {
@@ -49,6 +55,19 @@ export default function MembersPage() {
     finally { setInviting(false); }
   };
 
+  const handleRemove = async () => {
+    if (!confirmRemove) return;
+    setRemovingId(confirmRemove.userId);
+    try {
+      await workspaceService.removeMember(slug, confirmRemove.userId);
+      setMembers((prev) => prev.filter((m) => m.userId !== confirmRemove.userId));
+      setConfirmRemove(null);
+    } catch { /* ignore */ }
+    finally { setRemovingId(null); }
+  };
+
+  const isOwner = currentWorkspace?.isOwner;
+
   return (
     <div className="p-4 sm:p-6 min-h-[calc(100vh-64px)]">
       <div className="flex items-center justify-between mb-6">
@@ -81,34 +100,52 @@ export default function MembersPage() {
                 <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-6 py-3">Member</th>
                 <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-6 py-3">Role</th>
                 <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-6 py-3">Joined</th>
+                {isOwner && <th className="text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-6 py-3">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {members.map((member) => (
-                <tr key={member.userId} className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-brand-500">
-                        {member.firstName?.charAt(0)}{member.lastName?.charAt(0)}
+              {members.map((member) => {
+                const isSelf = member.userId === currentUser?.id;
+                return (
+                  <tr key={member.userId} className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-brand-500">
+                          {member.firstName?.charAt(0)}{member.lastName?.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {member.firstName} {member.lastName}
+                            {isSelf && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 font-medium">You</span>}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{member.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {member.firstName} {member.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{member.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm px-2.5 py-1 rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 font-medium">
-                      {member.roleName}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(member.assignedAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm px-2.5 py-1 rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 font-medium">
+                        {member.roleName}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      {new Date(member.assignedAt).toLocaleDateString()}
+                    </td>
+                    {isOwner && (
+                      <td className="px-6 py-4 text-right">
+                        {!isSelf && (
+                          <button
+                            onClick={() => setConfirmRemove(member)}
+                            disabled={removingId === member.userId}
+                            className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-50 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -148,6 +185,28 @@ export default function MembersPage() {
                 className="px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 flex items-center gap-2">
                 {inviting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                 Send Invite
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Confirm Dialog */}
+      {confirmRemove && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmRemove(null); }}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">Remove Member</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Are you sure you want to remove <strong>{confirmRemove.firstName} {confirmRemove.lastName}</strong> from this workspace?
+            </p>
+            <div className="flex gap-3">
+              <button onClick={handleRemove} disabled={removingId !== null}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50 transition-colors">
+                {removingId ? "Removing..." : "Remove"}
+              </button>
+              <button onClick={() => setConfirmRemove(null)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                Cancel
               </button>
             </div>
           </div>

@@ -27,4 +27,7 @@ export const notificationService = {
 
     markAllAsRead: (slug: string) =>
         api.put(`/workspaces/${slug}/notifications/read-all`),
+
+    clearAll: (slug: string) =>
+        api.delete(`/workspaces/${slug}/notifications/clear`),
 };

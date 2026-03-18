@@ -14,4 +14,13 @@ export interface OverviewStats {
 export const analyticsService = {
     getWorkload: (slug: string) => api.get<WorkloadEntry[]>(`/workspaces/${slug}/analytics/workload`).then(r => r.data),
     getOverview: (slug: string) => api.get<OverviewStats>(`/workspaces/${slug}/analytics/overview`).then(r => r.data),
+    exportCsv: (slug: string) =>
+        api.get(`/workspaces/${slug}/analytics/export`, { responseType: 'blob' }).then(r => {
+            const url = window.URL.createObjectURL(new Blob([r.data]));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${slug}-tasks-export.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }),
 };

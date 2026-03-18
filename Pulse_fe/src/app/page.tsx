@@ -471,7 +471,7 @@ function ScrollRevealText({ text }: { text: string }) {
     return (
         <div
             ref={ref}
-            className="relative w-full text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold leading-[1.15] tracking-tight flex flex-col items-start text-left cursor-default"
+            className="relative w-full text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-[1.25] tracking-tight flex flex-col items-start text-left cursor-default"
             style={{ fontFamily: "var(--font-mono)" }}
             onMouseMove={handleMouseMove}
             onMouseEnter={() => setIsHovered(true)}
@@ -482,7 +482,7 @@ function ScrollRevealText({ text }: { text: string }) {
                 {lines.map((line, lineIndex) => {
                     const wordsInLine = line.split(" ");
                     return (
-                        <span key={lineIndex} className="block w-full whitespace-nowrap">
+                        <span key={lineIndex} className="block w-full">
                             {wordsInLine.map((word, i) => {
                                 if (word === "") return <span key={`space-${i}`}> </span>;
                                 const currentIdx = globalIdx1++;
@@ -507,7 +507,7 @@ function ScrollRevealText({ text }: { text: string }) {
                 {lines.map((line, lineIndex) => {
                     const wordsInLine = line.split(" ");
                     return (
-                        <span key={lineIndex} className="block w-full whitespace-nowrap">
+                        <span key={lineIndex} className="block w-full">
                             {wordsInLine.map((word, i) => {
                                 if (word === "") return <span key={`space-${i}`}> </span>;
                                 return <span key={`mask-${i}`} className="inline-block mr-[0.3em]">{word}</span>;
@@ -728,7 +728,7 @@ export default function LandingPage() {
             {/* ═══ Scroll Reveal ═══ */}
             <section ref={scrollRevealRef} className="relative py-32 md:py-48 px-6 w-full overflow-hidden z-[3]">
                 <div className="max-w-7xl mx-auto flex flex-col items-start relative z-10 w-full">
-                    <ScrollRevealText text={"Stop context-switching between tools.\nPulse brings your tasks, docs,\nchats, and timelines into\none beautiful workspace — so your\nteam can focus on what matters."} />
+                    <ScrollRevealText text={"Stop context-switching between tools. Pulse brings your tasks, docs, chats, and timelines into one beautiful workspace — so your team can focus on what matters."} />
                 </div>
             </section>
 

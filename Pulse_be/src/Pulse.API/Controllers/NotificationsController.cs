@@ -75,4 +75,18 @@ public class NotificationsController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpDelete("notifications/clear")]
+    public async Task<IActionResult> ClearAll(string workspaceSlug)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace == null) return NotFound();
+
+        await _db.Notifications
+            .Where(n => n.UserId == userId && n.WorkspaceId == workspace.Id)
+            .ExecuteDeleteAsync();
+
+        return NoContent();
+    }
 }

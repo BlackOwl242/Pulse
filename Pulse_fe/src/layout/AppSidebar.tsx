@@ -49,31 +49,12 @@ const navItems: NavItem[] = [
   {
     icon: (
       <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
-        <rect x="3" y="4" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    name: "Calendar",
-    path: "/calendar",
-  },
-  {
-    icon: (
-      <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
         <path d="M3 3v18h18" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M7 16l4-8 4 4 4-6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
     name: "OKR",
     path: "/objectives",
-  },
-  {
-    icon: (
-      <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
-        <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    name: "Meetings",
-    path: "/meetings",
   },
   {
     icon: (
@@ -125,6 +106,7 @@ const navItems: NavItem[] = [
       { name: "My Workspaces", path: "/settings/workspaces" },
       { name: "Roles & Permissions", path: "/settings/roles" },
       { name: "Teams", path: "/settings/teams" },
+      { name: "Audit Log", path: "/settings/audit-log" },
     ],
   },
 ];

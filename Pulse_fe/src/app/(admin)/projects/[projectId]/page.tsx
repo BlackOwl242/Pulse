@@ -67,6 +67,10 @@ export default function ProjectBoardPage() {
   const [showAssigneePicker, setShowAssigneePicker] = useState(false);
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const assigneeInputRef = useRef<HTMLInputElement>(null);
+  // @mention
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState("");
   // Checklists
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [newChecklistItemText, setNewChecklistItemText] = useState<Record<string, string>>({});
@@ -795,19 +799,50 @@ export default function ProjectBoardPage() {
                   Comments {comments.length > 0 && `(${comments.length})`}
                 </label>
 
-                {/* Add comment */}
-                <div className="flex gap-2 mb-4">
-                  <input
-                    type="text" value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleAddComment(); }}
-                    placeholder="Write a comment..."
-                    className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
-                  />
-                  <button onClick={handleAddComment} disabled={postingComment || !newComment.trim()}
-                    className="px-3 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 shrink-0">
-                    {postingComment ? "..." : "Send"}
-                  </button>
+                {/* Add comment with @mention */}
+                <div className="relative mb-4">
+                  {showMentions && members.filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(mentionFilter)).length > 0 && (
+                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-32 overflow-y-auto z-10">
+                      {members.filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(mentionFilter)).map((m) => (
+                        <button key={m.userId} onClick={() => {
+                          const cursor = commentInputRef.current?.selectionStart || 0;
+                          const before = newComment.slice(0, cursor).replace(/@\w*$/, "");
+                          const after = newComment.slice(cursor);
+                          setNewComment(before + `@${m.firstName} ${m.lastName} ` + after);
+                          setShowMentions(false);
+                          commentInputRef.current?.focus();
+                        }}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-left text-sm">
+                          <div className="w-5 h-5 rounded-full bg-brand-500 flex items-center justify-center text-[8px] font-bold text-white shrink-0">
+                            {m.firstName?.charAt(0)}{m.lastName?.charAt(0)}
+                          </div>
+                          <span className="text-gray-700 dark:text-gray-200">{m.firstName} {m.lastName}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <textarea
+                      ref={commentInputRef}
+                      value={newComment}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewComment(val);
+                        const cursor = e.target.selectionStart || 0;
+                        const atMatch = val.slice(0, cursor).match(/@(\w*)$/);
+                        if (atMatch) { setShowMentions(true); setMentionFilter(atMatch[1].toLowerCase()); }
+                        else { setShowMentions(false); }
+                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
+                      placeholder="Write a comment... use @ to mention"
+                      rows={1}
+                      className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none resize-none"
+                    />
+                    <button onClick={handleAddComment} disabled={postingComment || !newComment.trim()}
+                      className="px-3 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 shrink-0">
+                      {postingComment ? "..." : "Send"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Comment list */}
@@ -829,7 +864,9 @@ export default function ProjectBoardPage() {
                             <span className="text-xs font-medium text-gray-900 dark:text-white">{comment.author.firstName} {comment.author.lastName}</span>
                             <span className="text-[10px] text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5 break-words">{comment.content}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5 break-words"
+                            dangerouslySetInnerHTML={{ __html: comment.content.replace(/@(\w+\s?\w+)/g, '<span class="text-brand-500 font-medium">@$1</span>') }}
+                          />
                         </div>
                       </div>
                     ))}

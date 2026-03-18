@@ -17,6 +17,76 @@ const CONFIDENCE_MAP: Record<number, { label: string; cls: string }> = {
   2: { label: "Off Track", cls: "text-red-500" },
 };
 
+function AlignmentTree({ objectives }: { objectives: OKRObjective[] }) {
+  if (objectives.length === 0) return <div className="p-8 text-center text-sm text-gray-400">No objectives to display</div>;
+  return (
+    <div className="p-6 overflow-x-auto">
+      <div className="flex flex-col items-center min-w-[600px]">
+        {/* Workspace root */}
+        <div className="px-5 py-2.5 rounded-xl bg-brand-500 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 mb-4">
+          Workspace Goals
+        </div>
+        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
+        {/* Horizontal connector */}
+        {objectives.length > 1 && (
+          <div className="relative w-full flex justify-center">
+            <div className="absolute top-0 h-px bg-gray-300 dark:bg-gray-600" style={{
+              left: `${50 / objectives.length}%`,
+              right: `${50 / objectives.length}%`,
+            }} />
+          </div>
+        )}
+        {/* Objectives row */}
+        <div className="flex gap-6 justify-center flex-wrap">
+          {objectives.map((obj) => {
+            const status = STATUS_MAP[obj.status] || STATUS_MAP[0];
+            return (
+              <div key={obj.id} className="flex flex-col items-center">
+                <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+                <div className="w-64 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${status.cls}`}>{status.label}</span>
+                    {obj.period && <span className="text-[10px] text-gray-400">{obj.period}</span>}
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-800 dark:text-white mb-2 line-clamp-2">{obj.title}</h4>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${obj.progress}%` }} />
+                    </div>
+                    <span className="text-[10px] font-medium text-gray-500">{Math.round(obj.progress)}%</span>
+                  </div>
+                </div>
+                {/* KR children */}
+                {obj.keyResults.length > 0 && (
+                  <>
+                    <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+                    <div className="flex gap-3 flex-wrap justify-center">
+                      {obj.keyResults.map((kr) => (
+                        <div key={kr.id} className="flex flex-col items-center">
+                          <div className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
+                          <div className="w-48 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3">
+                            <p className="text-xs text-gray-700 dark:text-gray-300 mb-1.5 line-clamp-2">{kr.title}</p>
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${kr.progress >= 100 ? "bg-green-500" : kr.progress >= 50 ? "bg-brand-500" : "bg-amber-500"}`} style={{ width: `${Math.min(kr.progress, 100)}%` }} />
+                              </div>
+                              <span className="text-[9px] text-gray-400">{kr.currentValue}/{kr.targetValue}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OKRPage() {
   const [objectives, setObjectives] = useState<OKRObjective[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +98,7 @@ export default function OKRPage() {
   const [checkInForm, setCheckInForm] = useState<{ krId: string; newValue: number; note: string; confidence: number } | null>(null);
   const [deletingObjId, setDeletingObjId] = useState<string | null>(null);
   const [deletingKrId, setDeletingKrId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "tree">("list");
   const slug = useSlug();
 
   const fetch = useCallback(async () => {
@@ -73,14 +144,10 @@ export default function OKRPage() {
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>, objId: string) => {
     e.stopPropagation();
     const newStatus = Number(e.target.value);
-    
-    // Optimistic UI update
     setObjectives(prev => prev.map(o => o.id === objId ? { ...o, status: newStatus } : o));
-    
     try {
       await okrService.updateObjective(slug, objId, { status: newStatus });
     } catch {
-      // Revert if failed (by re-fetching)
       await fetch();
     }
   };
@@ -89,10 +156,7 @@ export default function OKRPage() {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this Objective and all its Key Results?")) return;
     setDeletingObjId(id);
-    try {
-      await okrService.deleteObjective(slug, id);
-      await fetch();
-    } catch {}
+    try { await okrService.deleteObjective(slug, id); await fetch(); } catch {}
     setDeletingObjId(null);
   };
 
@@ -100,10 +164,7 @@ export default function OKRPage() {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this Key Result?")) return;
     setDeletingKrId(krId);
-    try {
-      await okrService.deleteKeyResult(slug, krId);
-      await fetch();
-    } catch {}
+    try { await okrService.deleteKeyResult(slug, krId); await fetch(); } catch {}
     setDeletingKrId(null);
   };
 
@@ -114,11 +175,23 @@ export default function OKRPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">OKR — Objectives</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track objectives and key results</p>
         </div>
-        <button onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white rounded-lg bg-brand-500 hover:bg-brand-600 transition-colors shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-          New Objective
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+            <button onClick={() => setViewMode("list")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === "list" ? "text-brand-600 dark:text-brand-400 bg-white dark:bg-gray-900 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}>
+              List
+            </button>
+            <button onClick={() => setViewMode("tree")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === "tree" ? "text-brand-600 dark:text-brand-400 bg-white dark:bg-gray-900 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}>
+              Tree
+            </button>
+          </div>
+          <button onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white rounded-lg bg-brand-500 hover:bg-brand-600 transition-colors shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            New Objective
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -130,6 +203,10 @@ export default function OKRPage() {
           </div>
           <h3 className="font-semibold text-gray-800 dark:text-white/90">No objectives yet</h3>
           <p className="text-sm text-gray-500 mt-1">Create your first OKR to start tracking progress</p>
+        </div>
+      ) : viewMode === "tree" ? (
+        <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+          <AlignmentTree objectives={objectives} />
         </div>
       ) : (
         <div className="space-y-4">
