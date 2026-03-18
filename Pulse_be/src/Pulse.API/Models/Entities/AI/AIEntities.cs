@@ -9,6 +9,7 @@ public class AIConversation : BaseEntity
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
     public Guid WorkspaceId { get; set; }
+    public string? Title { get; set; }
     public string Context { get; set; } = "global"; // "chat" | "task" | "global"
     public Guid? ContextEntityId { get; set; }
 

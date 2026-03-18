@@ -99,6 +99,17 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+// ===== PicoClaw MCP Server =====
+builder.Services.Configure<Pulse.API.Models.Common.PicoClawSettings>(
+    builder.Configuration.GetSection("PicoClaw"));
+builder.Services.AddHttpClient<IPicoClawService, PicoClawService>(client =>
+{
+    var picoClawConfig = builder.Configuration.GetSection("PicoClaw");
+    client.BaseAddress = new Uri(picoClawConfig["BaseUrl"]!);
+    client.Timeout = TimeSpan.FromSeconds(60);
+});
+builder.Services.AddScoped<IAIActionExecutor, AIActionExecutor>();
+
 // ===== SignalR =====
 builder.Services.AddSignalR();
 

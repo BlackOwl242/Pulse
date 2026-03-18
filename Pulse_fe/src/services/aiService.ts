@@ -1,7 +1,7 @@
 import api from './api';
 
 export interface AIConversation {
-    id: string; context: string; contextEntityId?: string; createdAt: string;
+    id: string; title?: string; context: string; contextEntityId?: string; createdAt: string;
     lastMessage?: string; messageCount: number;
 }
 
@@ -14,4 +14,8 @@ export const aiService = {
         api.post(`/workspaces/${slug}/ai/conversations`, { message, context }).then(r => r.data),
     sendMessage: (slug: string, convId: string, message: string) =>
         api.post(`/workspaces/${slug}/ai/conversations/${convId}/messages`, { message }).then(r => r.data),
+    deleteConversation: (slug: string, convId: string) =>
+        api.delete(`/workspaces/${slug}/ai/conversations/${convId}`),
+    renameConversation: (slug: string, convId: string, title: string) =>
+        api.patch(`/workspaces/${slug}/ai/conversations/${convId}/rename`, { title }).then(r => r.data),
 };
