@@ -16,6 +16,11 @@ public class RequireWorkspaceMemberAttribute : Attribute, IAsyncAuthorizationFil
 {
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
+        if (context.ActionDescriptor.EndpointMetadata.Any(em => em.GetType() == typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute)))
+        {
+            return;
+        }
+
         var user = context.HttpContext.User;
         if (!user.Identity?.IsAuthenticated ?? true)
         {

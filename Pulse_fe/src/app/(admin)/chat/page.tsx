@@ -26,17 +26,17 @@ export default function ChatPage() {
   const slug = useSlug();
 
   const fetchChannels = useCallback(async () => {
-    try { 
+    try {
       const [chs, mems] = await Promise.all([chatService.getChannels(slug), roleService.getMembers(slug)]);
       setChannels(chs);
       setMembers(mems);
-    } catch {}
+    } catch { }
     setLoading(false);
   }, [slug]);
 
-  useEffect(() => { 
-    fetchChannels(); 
-    
+  useEffect(() => {
+    fetchChannels();
+
     let mounted = true;
     connectChat(
       (data: any) => {
@@ -47,10 +47,10 @@ export default function ChatPage() {
             return [...prev, data as ChatMessage];
           });
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-          
+
           // Auto mark-as-read for non-sender messages
           if (data.sender?.id !== user?.id) {
-            chatService.markAsRead(slug, data.channelId, [data.id]).catch(() => {});
+            chatService.markAsRead(slug, data.channelId, [data.id]).catch(() => { });
           }
         }
         fetchChannels();
@@ -100,18 +100,18 @@ export default function ChatPage() {
       setMessages(reversed);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-      
+
       // Mark non-sender messages as read
       const nonSenderMsgIds = reversed.filter(m => m.sender.id !== user?.id && m.type !== 2).map(m => m.id);
       if (nonSenderMsgIds.length > 0) {
-        chatService.markAsRead(slug, channelId, nonSenderMsgIds).catch(() => {});
+        chatService.markAsRead(slug, channelId, nonSenderMsgIds).catch(() => { });
       }
-    } catch {}
+    } catch { }
   };
 
   const startDirectMessage = async (memberId: string) => {
     if (memberId === user?.id) return;
-    
+
     // Check if DM channel already exists
     const existing = channels.find(c => c.type === 0 && c.members?.some(m => m.userId === memberId));
     if (existing) {
@@ -123,7 +123,7 @@ export default function ChatPage() {
       const newChannel = await chatService.createChannel(slug, { type: 0, memberIds: [memberId] });
       await fetchChannels();
       openChannel(newChannel.id);
-    } catch {}
+    } catch { }
   };
 
   const sendMessage = async (payload: SendMessagePayload) => {
@@ -146,7 +146,7 @@ export default function ChatPage() {
       await chatService.setDestructTimer(slug, activeChannel, seconds);
       // Refresh channels so selfDestructSeconds is updated in activeChannelData
       await fetchChannels();
-    } catch {}
+    } catch { }
   };
 
   const timeAgo = (d: string) => {
@@ -172,7 +172,7 @@ export default function ChatPage() {
     try {
       await chatService.muteChannel(slug, activeChannel, newMuted);
       setMutedMap(prev => ({ ...prev, [activeChannel]: newMuted }));
-    } catch {}
+    } catch { }
   };
 
   const handleChannelAction = async (action: 'hide' | 'leave' | 'delete-channel' | 'kick-all') => {
@@ -192,27 +192,27 @@ export default function ChatPage() {
       setActiveChannel(null);
       activeChannelRef.current = null;
       await fetchChannels();
-    } catch {}
+    } catch { }
   };
 
   // Group data for sidebar
   const filteredChannels = channels.filter(c => c.type === 1 && (c.name || "Channel").toLowerCase().includes(search.toLowerCase()));
-  
-  const filteredDms = channels.filter(c => c.type === 0 && 
+
+  const filteredDms = channels.filter(c => c.type === 0 &&
     (c.members?.filter(m => m.userId !== user?.id).some(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase()) || m.email?.toLowerCase().includes(search.toLowerCase())) || "Direct").toString()
   );
 
   // Members we don't have a DM with yet
   const dmMems = new Set(channels.filter(c => c.type === 0).flatMap(c => c.members?.map(m => m.userId) || []));
-  const filteredPeople = members.filter(m => 
+  const filteredPeople = members.filter(m =>
     m.userId !== user?.id && !dmMems.has(m.userId) &&
     (`${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase()) || m.email?.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
-    <div className="flex h-[calc(100vh-64px)] xl:h-[calc(100vh-88px)] flex-col xl:flex-row xl:gap-6 w-full max-w-full">
+    <div className="flex h-[calc(100vh-64px)] xl:h-[calc(100vh-120px)] flex-col xl:flex-row xl:gap-6 w-full max-w-full xl:mt-6 xl:mr-6">
       <div className={`h-full ${activeChannel ? 'hidden xl:block' : 'block'} flex-1 xl:flex-none xl:w-80 2xl:w-96 shrink-0 overflow-hidden`}>
-        <ChatSidebar 
+        <ChatSidebar
           search={search} setSearch={setSearch}
           filteredChannels={filteredChannels} filteredDms={filteredDms} filteredPeople={filteredPeople}
           activeChannel={activeChannel} openChannel={openChannel} startDirectMessage={startDirectMessage}
@@ -220,7 +220,7 @@ export default function ChatPage() {
         />
       </div>
       <div className={`h-full ${!activeChannel ? 'hidden xl:block' : 'block'} flex-1 min-w-0 overflow-hidden`}>
-        <ChatBox 
+        <ChatBox
           activeChannelData={activeChannelData} messages={messages} user={user}
           msgInput={msgInput} setMsgInput={setMsgInput} sendMessage={sendMessage} sending={sending}
           messagesEndRef={messagesEndRef} timeAgo={timeAgo} onBack={() => { setActiveChannel(null); activeChannelRef.current = null; }}
