@@ -17,4 +17,7 @@ export const authService = {
     forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
     resetPassword: (req: ResetPasswordRequest) => api.post('/auth/reset-password', req),
     changePassword: (req: ChangePasswordRequest) => api.put('/auth/change-password', req),
+
+    googleLogin: (code: string, redirectUri: string) =>
+        api.post<AuthResponse>('/auth/google', { code, redirectUri }).then((res) => res.data),
 };

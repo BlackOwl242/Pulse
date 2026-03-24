@@ -16,12 +16,14 @@ public class ProjectsController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly INotificationService _notifications;
+    private readonly IActivityLogService _activity;
 
-    public ProjectsController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
+    public ProjectsController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications, IActivityLogService activity)
     {
         _db = db;
         _currentUser = currentUser;
         _notifications = notifications;
+        _activity = activity;
     }
 
     [HttpGet]
@@ -84,6 +86,8 @@ public class ProjectsController : ControllerBase
         _db.Projects.Add(project);
         await _db.SaveChangesAsync();
 
+        await _activity.LogActivityAsync(workspace.Id, _currentUser.UserId!.Value, "Project", project.Id, "Created", $"Created project '{project.Name}'");
+
         // Notify all workspace members about new project
         var creator = await _db.Users.FindAsync(_currentUser.UserId!.Value);
         var memberIds = await _db.UserWorkspaceRoles
@@ -117,6 +121,13 @@ public class ProjectsController : ControllerBase
         if (request.Status.HasValue) project.Status = request.Status.Value;
 
         await _db.SaveChangesAsync();
+
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace != null)
+        {
+            await _activity.LogActivityAsync(workspace.Id, _currentUser.UserId!.Value, "Project", project.Id, "Updated", $"Updated project '{project.Name}'");
+        }
+
         return NoContent();
     }
 
@@ -130,6 +141,13 @@ public class ProjectsController : ControllerBase
         project.DeletedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace != null)
+        {
+            await _activity.LogActivityAsync(workspace.Id, _currentUser.UserId!.Value, "Project", project.Id, "Deleted", $"Deleted project '{project.Name}'");
+        }
+
         return NoContent();
     }
 }

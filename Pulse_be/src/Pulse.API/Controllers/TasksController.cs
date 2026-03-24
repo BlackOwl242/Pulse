@@ -19,12 +19,14 @@ public class TasksController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly INotificationService _notifications;
+    private readonly IActivityLogService _activity;
 
-    public TasksController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
+    public TasksController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications, IActivityLogService activity)
     {
         _db = db;
         _currentUser = currentUser;
         _notifications = notifications;
+        _activity = activity;
     }
 
     /// <summary>
@@ -137,11 +139,13 @@ public class TasksController : ControllerBase
         _db.Tasks.Add(task);
         await _db.SaveChangesAsync();
 
-        // Notify assigned users
-        if (request.AssigneeIds != null)
+        // Notify assigned users and log activity
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace != null)
         {
-            var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
-            if (workspace != null)
+            await _activity.LogActivityAsync(workspace.Id, userId, "Task", task.Id, "Created", $"Created task '{task.Title}'");
+
+            if (request.AssigneeIds != null)
             {
                 foreach (var aId in request.AssigneeIds.Where(a => a != userId))
                 {
@@ -195,10 +199,12 @@ public class TasksController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        // Send notifications
+        // Send notifications and log activity
         var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
         if (workspace != null)
         {
+            await _activity.LogActivityAsync(workspace.Id, userId, "Task", task.Id, "Updated", $"Updated task '{task.Title}'");
+
             // Notify new assignees
             if (request.AssigneeIds != null)
             {
@@ -228,14 +234,23 @@ public class TasksController : ControllerBase
     [HttpPatch("/api/workspaces/{workspaceSlug}/tasks/{taskId}/move")]
     public async Task<IActionResult> MoveTask(string workspaceSlug, Guid taskId, [FromBody] MoveTaskRequest request)
     {
+        var userId = _currentUser.UserId!.Value;
         var task = await _db.Tasks.FindAsync(taskId);
         if (task == null) return NotFound();
 
+        var oldStatus = task.Status;
         task.Status = request.Status;
         task.Position = request.Position;
         task.CompletedAt = request.Status == TaskItemStatus.Done ? DateTime.UtcNow : null;
 
         await _db.SaveChangesAsync();
+
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace != null)
+        {
+            await _activity.LogActivityAsync(workspace.Id, userId, "Task", task.Id, "Moved", $"Moved task '{task.Title}' from {oldStatus} to {request.Status}");
+        }
+
         return NoContent();
     }
 
@@ -245,6 +260,7 @@ public class TasksController : ControllerBase
     [HttpDelete("/api/workspaces/{workspaceSlug}/tasks/{taskId}")]
     public async Task<IActionResult> Delete(string workspaceSlug, Guid taskId)
     {
+        var userId = _currentUser.UserId!.Value;
         var task = await _db.Tasks.FindAsync(taskId);
         if (task == null) return NotFound();
 
@@ -252,6 +268,13 @@ public class TasksController : ControllerBase
         task.DeletedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
+        if (workspace != null)
+        {
+            await _activity.LogActivityAsync(workspace.Id, userId, "Task", task.Id, "Deleted", $"Deleted task '{task.Title}'");
+        }
+
         return NoContent();
     }
 

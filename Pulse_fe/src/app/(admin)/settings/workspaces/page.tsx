@@ -173,7 +173,7 @@ export default function MyWorkspacesPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 max-w-8xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -387,11 +387,10 @@ export default function MyWorkspacesPage() {
               {transferDialog.members.map((m) => (
                 <label
                   key={m.userId}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    transferDialog.selectedId === m.userId
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${transferDialog.selectedId === m.userId
                       ? "border-brand-500 bg-brand-50/50 dark:bg-brand-500/10 dark:border-brand-500/50"
                       : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <input
                     type="radio"

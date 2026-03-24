@@ -165,7 +165,7 @@ export default function RolesSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl min-h-[calc(100vh-64px)]">
+    <div className="mx-auto max-w-8xl min-h-[calc(100vh-64px)]">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -213,11 +213,10 @@ export default function RolesSettingsPage() {
               >
                 <div className="flex items-center gap-4">
                   <div
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm ${
-                      role.isSystem
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm ${role.isSystem
                         ? "bg-gradient-to-br from-brand-500 to-brand-600"
                         : "bg-gradient-to-br from-emerald-500 to-teal-600"
-                    }`}
+                      }`}
                   >
                     {role.name.charAt(0)}
                   </div>

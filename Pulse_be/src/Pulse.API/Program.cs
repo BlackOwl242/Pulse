@@ -93,6 +93,7 @@ builder.Services.AddAuthorization();
 
 // ===== Services =====
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient(); // For Keycloak code exchange
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -109,6 +110,7 @@ builder.Services.AddHttpClient<IPicoClawService, PicoClawService>(client =>
     client.Timeout = TimeSpan.FromSeconds(60);
 });
 builder.Services.AddScoped<IAIActionExecutor, AIActionExecutor>();
+builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 
 // ===== SignalR =====
 builder.Services.AddSignalR();

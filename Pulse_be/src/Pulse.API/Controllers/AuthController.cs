@@ -20,13 +20,17 @@ public class AuthController : ControllerBase
     private readonly IJwtTokenService _jwtTokenService;
     private readonly ApplicationDbContext _db;
     private readonly IWebHostEnvironment _env;
+    private readonly IConfiguration _config;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public AuthController(IAuthService authService, IJwtTokenService jwtTokenService, ApplicationDbContext db, IWebHostEnvironment env)
+    public AuthController(IAuthService authService, IJwtTokenService jwtTokenService, ApplicationDbContext db, IWebHostEnvironment env, IConfiguration config, IHttpClientFactory httpClientFactory)
     {
         _authService = authService;
         _jwtTokenService = jwtTokenService;
         _db = db;
         _env = env;
+        _config = config;
+        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
@@ -54,25 +58,51 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Exchange KeyCloak token for Pulse JWT (Google login)
-    /// Frontend gets token from KeyCloak → sends here → gets Pulse JWT back
+    /// Exchange KeyCloak authorization code for Pulse JWT (Google login)
     /// </summary>
     [HttpPost("google")]
-    [Authorize(AuthenticationSchemes = "Keycloak")]
-    public async Task<ActionResult<AuthResponse>> GoogleLogin()
+    public async Task<ActionResult<AuthResponse>> GoogleLogin([FromBody] GoogleLoginRequest request)
     {
-        // Extract user info from KeyCloak token claims
-        var email = User.FindFirstValue(ClaimTypes.Email)
-                    ?? User.FindFirstValue("email");
-        var firstName = User.FindFirstValue(ClaimTypes.GivenName)
-                        ?? User.FindFirstValue("given_name") ?? "";
-        var lastName = User.FindFirstValue(ClaimTypes.Surname)
-                       ?? User.FindFirstValue("family_name") ?? "";
-        var keycloakId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                         ?? User.FindFirstValue("sub");
+        // Exchange code for Keycloak token
+        var authority = _config["Keycloak:Authority"]?.TrimEnd('/');
+        var clientId = _config["Keycloak:Audience"] ?? "pulse-client";
+        var clientSecret = _config["Keycloak:ClientSecret"];
+        
+        var tokenEndpoint = $"{authority}/protocol/openid-connect/token";
+        
+        using var client = _httpClientFactory.CreateClient();
+        var tokenResponse = await client.PostAsync(tokenEndpoint, new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            { "grant_type", "authorization_code" },
+            { "client_id", clientId },
+            { "client_secret", clientSecret! },
+            { "code", request.Code },
+            { "redirect_uri", request.RedirectUri }
+        }));
+
+        if (!tokenResponse.IsSuccessStatusCode)
+        {
+            var err = await tokenResponse.Content.ReadAsStringAsync();
+            return BadRequest(new { message = "Failed to exchange authorization code with Keycloak.", details = err });
+        }
+
+        var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var keycloakAccessToken = tokenJson.GetProperty("access_token").GetString();
+
+        if (string.IsNullOrEmpty(keycloakAccessToken))
+            return BadRequest(new { message = "Access token missing from Keycloak response." });
+
+        // Decode the JWT to read claims
+        var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwtToken = tokenHandler.ReadJwtToken(keycloakAccessToken);
+
+        var email = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email || c.Type == "email")?.Value;
+        var firstName = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.GivenName || c.Type == "given_name")?.Value ?? "";
+        var lastName = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Surname || c.Type == "family_name")?.Value ?? "";
+        var keycloakId = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "sub")?.Value;
 
         if (string.IsNullOrEmpty(email))
-            return BadRequest(new { message = "Email not found in KeyCloak token" });
+            return BadRequest(new { message = "Email not found in KeyCloak token." });
 
         // Find or create user
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
@@ -267,4 +297,10 @@ public class RefreshTokenRequest
 public class ForgotPasswordRequest
 {
     public string Email { get; set; } = string.Empty;
+}
+
+public class GoogleLoginRequest
+{
+    public string Code { get; set; } = string.Empty;
+    public string RedirectUri { get; set; } = string.Empty;
 }

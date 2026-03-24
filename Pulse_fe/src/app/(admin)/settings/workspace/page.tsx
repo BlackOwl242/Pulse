@@ -90,7 +90,7 @@ export default function WorkspaceSettingsPage() {
       await workspaceService.update(slug, { name, description });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch {}
+    } catch { }
     setSaving(false);
   };
 
@@ -127,7 +127,7 @@ export default function WorkspaceSettingsPage() {
   if (loading) return <div className="p-6 flex justify-center"><div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className="p-4 sm:p-6 min-h-[calc(100vh-64px)] max-w-2xl">
+    <div className="p-4 sm:p-6 min-h-[calc(100vh-64px)] max-w-8xl">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Workspace Settings</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Manage your workspace configuration</p>
 
@@ -170,112 +170,114 @@ export default function WorkspaceSettingsPage() {
         </div>
       </div>
 
-      {/* Invite / Add member Card */}
-      <div className="mt-6 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
-            </svg>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 items-start">
+        {/* Invite / Add member Card */}
+        <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6 h-full flex flex-col">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Add People</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Invite via email or add an existing user directly</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Add People</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Invite via email or add an existing user directly</p>
+
+          {/* Mode toggle */}
+          <div className="flex gap-1 p-1 rounded-lg bg-gray-100 dark:bg-gray-800 mb-4 w-fit">
+            <button onClick={() => setInviteMode("invite")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${inviteMode === "invite" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}>
+              Send Invitation
+            </button>
+            <button onClick={() => setInviteMode("add")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${inviteMode === "add" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}>
+              Add Directly
+            </button>
           </div>
+
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+            {inviteMode === "invite"
+              ? "Send an email invitation. The user will receive a link to join your workspace."
+              : "Add an existing Pulse user directly by their email. They will be added immediately."}
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="colleague@example.com"
+              onKeyDown={(e) => e.key === "Enter" && handleInviteOrAdd()}
+              className="flex-1 px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+            <select value={inviteRoleId} onChange={(e) => setInviteRoleId(e.target.value)}
+              className="sm:w-40 px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none">
+              {roles.map((role) => (
+                <option key={role.id} value={role.id}>{role.name}</option>
+              ))}
+            </select>
+            <button onClick={handleInviteOrAdd} disabled={inviting || !inviteEmail.trim()}
+              className="px-5 py-2.5 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
+              {inviting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              {inviteMode === "invite" ? "Send Invite" : "Add Member"}
+            </button>
+          </div>
+
+          {inviteMsg && (
+            <div className={`mt-3 flex items-center gap-2 text-sm ${inviteMsg.type === "success" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+              {inviteMsg.type === "success" ? (
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              ) : (
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+              )}
+              {inviteMsg.text}
+            </div>
+          )}
         </div>
 
-        {/* Mode toggle */}
-        <div className="flex gap-1 p-1 rounded-lg bg-gray-100 dark:bg-gray-800 mb-4 w-fit">
-          <button onClick={() => setInviteMode("invite")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${inviteMode === "invite" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}>
-            Send Invitation
-          </button>
-          <button onClick={() => setInviteMode("add")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${inviteMode === "add" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}>
-            Add Directly
-          </button>
-        </div>
-
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
-          {inviteMode === "invite"
-            ? "Send an email invitation. The user will receive a link to join your workspace."
-            : "Add an existing Pulse user directly by their email. They will be added immediately."}
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="colleague@example.com"
-            onKeyDown={(e) => e.key === "Enter" && handleInviteOrAdd()}
-            className="flex-1 px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
-          <select value={inviteRoleId} onChange={(e) => setInviteRoleId(e.target.value)}
-            className="sm:w-40 px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none">
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>{role.name}</option>
-            ))}
-          </select>
-          <button onClick={handleInviteOrAdd} disabled={inviting || !inviteEmail.trim()}
-            className="px-5 py-2.5 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
-            {inviting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-            {inviteMode === "invite" ? "Send Invite" : "Add Member"}
-          </button>
-        </div>
-
-        {inviteMsg && (
-          <div className={`mt-3 flex items-center gap-2 text-sm ${inviteMsg.type === "success" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-            {inviteMsg.type === "success" ? (
-              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            ) : (
-              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-            )}
-            {inviteMsg.text}
+        {/* Pending Invitations Card */}
+        <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden h-full flex flex-col">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Pending Invitations</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500">{invitations.length} pending</p>
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Pending Invitations Card */}
-      <div className="mt-6 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-          <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-            </svg>
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Pending Invitations</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500">{invitations.length} pending</p>
-          </div>
-        </div>
-
-        {loadingInvites ? (
-          <div className="p-6 flex justify-center">
-            <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : invitations.length === 0 ? (
-          <div className="px-6 py-8 text-center">
-            <p className="text-sm text-gray-400 dark:text-gray-500">No pending invitations</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {invitations.map((inv) => (
-              <div key={inv.id} className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
-                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
-                  {inv.email.charAt(0).toUpperCase()}
+          {loadingInvites ? (
+            <div className="p-6 flex justify-center">
+              <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : invitations.length === 0 ? (
+            <div className="px-6 py-8 text-center">
+              <p className="text-sm text-gray-400 dark:text-gray-500">No pending invitations</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {invitations.map((inv) => (
+                <div key={inv.id} className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                    {inv.email.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inv.email}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      as <span className="font-medium text-gray-500 dark:text-gray-400">{inv.roleName}</span>
+                      {" · "}by {inv.invitedBy}
+                      {" · "}expires {new Date(inv.expiresAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button onClick={() => handleRevoke(inv.id)}
+                    className="px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors whitespace-nowrap">
+                    Revoke
+                  </button>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inv.email}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
-                    as <span className="font-medium text-gray-500 dark:text-gray-400">{inv.roleName}</span>
-                    {" · "}by {inv.invitedBy}
-                    {" · "}expires {new Date(inv.expiresAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <button onClick={() => handleRevoke(inv.id)}
-                  className="px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors whitespace-nowrap">
-                  Revoke
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

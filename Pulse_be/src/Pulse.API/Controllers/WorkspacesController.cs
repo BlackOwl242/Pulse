@@ -20,12 +20,14 @@ public class WorkspacesController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly INotificationService _notifications;
+    private readonly IActivityLogService _activity;
 
-    public WorkspacesController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
+    public WorkspacesController(ApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications, IActivityLogService activity)
     {
         _db = db;
         _currentUser = currentUser;
         _notifications = notifications;
+        _activity = activity;
     }
 
     /// <summary>
@@ -140,6 +142,9 @@ public class WorkspacesController : ControllerBase
         if (request.LogoUrl != null) workspace.LogoUrl = request.LogoUrl;
 
         await _db.SaveChangesAsync();
+
+        await _activity.LogActivityAsync(workspace.Id, _currentUser.UserId!.Value, "Workspace", workspace.Id, "Updated", "Updated workspace settings");
+
         return NoContent();
     }
 
@@ -191,6 +196,12 @@ public class WorkspacesController : ControllerBase
         _db.UserWorkspaceRoles.Remove(membership);
         await _db.SaveChangesAsync();
 
+        var removedUser = await _db.Users.FindAsync(userId);
+        if (removedUser != null)
+        {
+            await _activity.LogActivityAsync(workspace.Id, currentUserId, "Workspace", workspace.Id, "MemberRemoved", $"Removed user {removedUser.Email} from workspace");
+        }
+
         // Notify the removed user
         var actor = await _db.Users.FindAsync(currentUserId);
         await _notifications.SendAsync(userId, workspace.Id, NotificationType.StatusChanged,
@@ -236,6 +247,12 @@ public class WorkspacesController : ControllerBase
         membership.RoleId = request.RoleId;
         membership.AssignedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+
+        var targetUser = await _db.Users.FindAsync(userId);
+        if (targetUser != null)
+        {
+            await _activity.LogActivityAsync(workspace.Id, _currentUser.UserId!.Value, "Workspace", workspace.Id, "RoleChanged", $"Changed role for {targetUser.Email} to {role.Name}");
+        }
 
         // Notify the user about role change
         var changer = await _db.Users.FindAsync(_currentUser.UserId!.Value);
@@ -370,6 +387,8 @@ public class WorkspacesController : ControllerBase
             RoleId = request.RoleId
         });
         await _db.SaveChangesAsync();
+
+        await _activity.LogActivityAsync(workspace.Id, _currentUser.UserId!.Value, "Workspace", workspace.Id, "MemberAdded", $"Added user {user.Email} to workspace");
 
         // Notify the added user
         var adder = await _db.Users.FindAsync(_currentUser.UserId!.Value);
@@ -555,6 +574,12 @@ public class WorkspacesController : ControllerBase
 
         workspace.OwnerId = request.NewOwnerId;
         await _db.SaveChangesAsync();
+
+        var newOwner = await _db.Users.FindAsync(request.NewOwnerId);
+        if (newOwner != null)
+        {
+            await _activity.LogActivityAsync(workspace.Id, userId, "Workspace", workspace.Id, "OwnershipTransferred", $"Transferred ownership to {newOwner.Email}");
+        }
 
         // Notify the new owner
         var oldOwner = await _db.Users.FindAsync(userId);

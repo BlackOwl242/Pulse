@@ -51,7 +51,7 @@ export default function DashboardPage() {
           const userId = user?.id;
           if (userId) {
             const mine = allTasks.filter(t => t.assignees?.some((a: any) => a.id === userId) && t.statusName !== "Done");
-            setMyTasks(mine.slice(0, 5));
+            setMyTasks(mine.slice(0, 20));
           }
         }
 
@@ -61,10 +61,10 @@ export default function DashboardPage() {
           api.get(`/workspaces/${slug}/chat/channels`).then(r => r.data).catch(() => []),
           api.get(`/workspaces/${slug}/objectives`).then(r => r.data).catch(() => []),
         ]);
-        setMeetings(mtgs.slice(0, 3));
-        setChannels(chnls.slice(0, 3));
-        setObjectives(objs.slice(0, 3));
-      } catch {}
+        setMeetings(mtgs.slice(0, 10));
+        setChannels(chnls.slice(0, 10));
+        setObjectives(objs.slice(0, 10));
+      } catch { }
       setLoading(false);
     }
     load();
@@ -140,26 +140,26 @@ export default function DashboardPage() {
             <Link href="/my-tasks" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-medium">View all</Link>
           </div>
           {loading ? <div className="p-6 flex justify-center"><div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>
-          : myTasks.length === 0 ? (
-            <div className="p-6 text-center">
-              <p className="text-sm text-gray-400">No tasks assigned to you</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
-              {myTasks.map((t: any) => (
-                <Link key={t.id} href={`/projects/${t.projectId || ''}`} className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${t.statusName === 'InProgress' ? 'bg-blue-500' : t.statusName === 'InReview' ? 'bg-amber-500' : 'bg-gray-400'}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{t.title}</p>
-                    {t.deadline && <p className="text-[10px] text-gray-400">{new Date(t.deadline).toLocaleDateString()}</p>}
-                  </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${t.statusName === 'InProgress' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' : t.statusName === 'InReview' ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
-                    {t.statusName === 'InProgress' ? 'In Progress' : t.statusName === 'InReview' ? 'In Review' : 'To Do'}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
+            : myTasks.length === 0 ? (
+              <div className="p-6 text-center">
+                <p className="text-sm text-gray-400">No tasks assigned to you</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50 dark:divide-gray-800/50 max-h-[240px] overflow-y-auto custom-scrollbar">
+                {myTasks.map((t: any) => (
+                  <Link key={t.id} href={`/projects/${t.projectId || ''}`} className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${t.statusName === 'InProgress' ? 'bg-blue-500' : t.statusName === 'InReview' ? 'bg-amber-500' : 'bg-gray-400'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{t.title}</p>
+                      {t.deadline && <p className="text-[10px] text-gray-400">{new Date(t.deadline).toLocaleDateString()}</p>}
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${t.statusName === 'InProgress' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' : t.statusName === 'InReview' ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                      {t.statusName === 'InProgress' ? 'In Progress' : t.statusName === 'InReview' ? 'In Review' : 'To Do'}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
         </div>
 
         {/* Upcoming Meetings */}
@@ -177,7 +177,7 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-400">No upcoming meetings</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
+            <div className="divide-y divide-gray-50 dark:divide-gray-800/50 max-h-[240px] overflow-y-auto custom-scrollbar">
               {meetings.map((m: any) => (
                 <Link key={m.id} href="/meetings" className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
                   <div className="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center shrink-0">
@@ -213,7 +213,7 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-400">No objectives yet</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
+            <div className="divide-y divide-gray-50 dark:divide-gray-800/50 max-h-[240px] overflow-y-auto custom-scrollbar">
               {objectives.map((o: any) => (
                 <Link key={o.id} href="/objectives" className="block px-6 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
                   <div className="flex items-center justify-between mb-1.5">
@@ -243,7 +243,7 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-400">No conversations yet</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
+            <div className="divide-y divide-gray-50 dark:divide-gray-800/50 max-h-[240px] overflow-y-auto custom-scrollbar">
               {channels.map((c: any) => (
                 <Link key={c.id} href="/chat" className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
                   <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0 text-amber-600 text-xs font-bold">
@@ -325,8 +325,8 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-400">No projects yet</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
-              {projects.slice(0, 4).map((project) => {
+            <div className="divide-y divide-gray-50 dark:divide-gray-800/50 max-h-[240px] overflow-y-auto custom-scrollbar">
+              {projects.slice(0, 10).map((project) => {
                 const progress = project.taskCount > 0 ? Math.round((project.completedTaskCount / project.taskCount) * 100) : 0;
                 return (
                   <Link key={project.id} href={`/projects/${project.id}`} className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
@@ -405,26 +405,26 @@ interface Activity { id: string; action: string; description: string; entityType
 function ActivityCard({ slug }: { slug: string }) {
   const [activities, setActivities] = React.useState<Activity[]>([]);
   const [loading, setLoading] = React.useState(true);
-  React.useEffect(() => { if (!slug) { setLoading(false); return; } api.get(`/workspaces/${slug}/activity`, { params: { limit: 8 } }).then((r) => setActivities(r.data)).catch(() => {}).finally(() => setLoading(false)); }, [slug]);
+  React.useEffect(() => { if (!slug) { setLoading(false); return; } api.get(`/workspaces/${slug}/activity`, { params: { limit: 20 } }).then((r) => setActivities(r.data)).catch(() => { }).finally(() => setLoading(false)); }, [slug]);
   const timeAgo = (d: string) => { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (m < 1) return "now"; if (m < 60) return `${m}m`; const h = Math.floor(m / 60); if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`; };
   return (
     <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
       <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800"><h2 className="text-sm font-semibold text-gray-900 dark:text-white">Recent Activity</h2></div>
       {loading ? <div className="p-6 flex justify-center"><div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>
-      : activities.length === 0 ? <div className="p-6 text-center text-sm text-gray-400">No recent activity</div>
-      : (
-        <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
-          {activities.map((a) => (
-            <div key={a.id} className="flex items-start gap-3 px-6 py-3">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-brand-500 shrink-0 mt-0.5">{a.actor?.firstName?.charAt(0)}{a.actor?.lastName?.charAt(0)}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1"><span className="font-medium text-gray-900 dark:text-white">{a.actor?.firstName} {a.actor?.lastName}</span> {a.description}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(a.createdAt)}</p>
-              </div>
+        : activities.length === 0 ? <div className="p-6 text-center text-sm text-gray-400">No recent activity</div>
+          : (
+            <div className="divide-y divide-gray-50 dark:divide-gray-800/50 max-h-[240px] overflow-y-auto custom-scrollbar">
+              {activities.map((a) => (
+                <div key={a.id} className="flex items-start gap-3 px-6 py-3">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-brand-500 shrink-0 mt-0.5">{a.actor?.firstName?.charAt(0)}{a.actor?.lastName?.charAt(0)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1"><span className="font-medium text-gray-900 dark:text-white">{a.actor?.firstName} {a.actor?.lastName}</span> {a.description}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(a.createdAt)}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
     </div>
   );
 }

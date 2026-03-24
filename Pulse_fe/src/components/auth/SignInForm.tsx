@@ -5,8 +5,8 @@ import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/stores/useAuthStore";
 
@@ -19,7 +19,15 @@ export default function SignInForm() {
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
+
+  useEffect(() => {
+    const errParam = searchParams.get("error");
+    if (errParam) {
+      setError(errParam);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,8 +76,13 @@ export default function SignInForm() {
               type="button"
               onClick={() => {
                 // SSO Prep: Redirect to Keycloak for Google login
-                // User will authenticate there and be redirected back to a callback page
-                window.location.href = "http://localhost:8080/realms/pulse/protocol/openid-connect/auth?client_id=pulse-client&redirect_uri=http://localhost:3000/auth/callback&response_type=token&scope=openid email profile";
+                const baseUrl = process.env.NEXT_PUBLIC_KEYCLOAK_BASE_URL || "http://localhost:8080";
+                const realm = process.env.NEXT_PUBLIC_KEYCLOAK_REALM || "pulse";
+                const keycloakUrl = `${baseUrl}/realms/${realm}/protocol/openid-connect/auth`;
+                const clientId = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || "pulse-app";
+                const redirectUri = process.env.NEXT_PUBLIC_KEYCLOAK_REDIRECT_URI || (typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : "http://localhost:3000/auth/callback");
+                
+                window.location.href = `${keycloakUrl}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid email profile&kc_idp_hint=google`;
               }}
               className="flex items-center justify-center w-full gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
             >
