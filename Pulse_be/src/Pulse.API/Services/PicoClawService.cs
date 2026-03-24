@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using Pulse.API.Models.Common;
 using Pulse.API.Services.Interfaces;
@@ -92,7 +93,7 @@ public class PicoClawService : IPicoClawService
                 return new PicoClawResponse
                 {
                     Success = true,
-                    Content = contentText ?? responseBody,
+                    Content = SanitizeResponse(contentText ?? responseBody),
                     Actions = actions
                 };
             }
@@ -102,7 +103,7 @@ public class PicoClawService : IPicoClawService
                 return new PicoClawResponse
                 {
                     Success = true,
-                    Content = responseBody
+                    Content = SanitizeResponse(responseBody)
                 };
             }
         }
@@ -142,5 +143,18 @@ public class PicoClawService : IPicoClawService
             _logger.LogWarning(ex, "PicoClaw health check failed");
             return false;
         }
+    }
+
+    private static string SanitizeResponse(string text)
+    {
+        // Strip full ANSI escape codes: ESC[ ... (letter or ~)
+        text = Regex.Replace(text, @"\x1b\[[0-9;?]*[a-zA-Z~]", "");
+        // Strip partial/orphaned ANSI fragments like [e~[ or [0m
+        text = Regex.Replace(text, @"\[[\d;]*[a-zA-Z~]", "");
+        // Strip lone escape characters
+        text = Regex.Replace(text, @"\x1b", "");
+        // Strip any remaining control characters except newline/tab
+        text = Regex.Replace(text, @"[\x00-\x08\x0b\x0c\x0e-\x1f]", "");
+        return text.Trim();
     }
 }

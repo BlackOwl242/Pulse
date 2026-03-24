@@ -7,9 +7,9 @@ namespace Pulse.API.Services;
 
 public class MessageCleanupService : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IHubContext<ChatHub> _chatHub;
-    private readonly ILogger<MessageCleanupService> _logger;
+    private readonly IServiceScopeFactory _scopeFactory; //Service scope factory to create scopes for each message cleanup
+    private readonly IHubContext<ChatHub> _chatHub; //SignalR hub context
+    private readonly ILogger<MessageCleanupService> _logger; //Logger for logging messages 
 
     public MessageCleanupService(IServiceScopeFactory scopeFactory, IHubContext<ChatHub> chatHub, ILogger<MessageCleanupService> logger)
     {
