@@ -21,7 +21,7 @@ export default function ChatPage() {
   const [msgInput, setMsgInput] = useState("");
   const [sending, setSending] = useState(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null!);
   const activeChannelRef = useRef<string | null>(null);
   const slug = useSlug();
 
@@ -199,7 +199,7 @@ export default function ChatPage() {
   const filteredChannels = channels.filter(c => c.type === 1 && (c.name || "Channel").toLowerCase().includes(search.toLowerCase()));
 
   const filteredDms = channels.filter(c => c.type === 0 &&
-    (c.members?.filter(m => m.userId !== user?.id).some(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase()) || m.email?.toLowerCase().includes(search.toLowerCase())) || "Direct").toString()
+    (c.members?.filter(m => m.userId !== user?.id).some(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase())) || "Direct").toString()
   );
 
   // Members we don't have a DM with yet
