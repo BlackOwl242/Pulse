@@ -4,6 +4,7 @@ import { workspaceService, PendingInvitation } from "@/services/workspaceService
 import { roleService } from "@/services/roleService";
 import { Role } from "@/types/roles";
 import { useSlug } from '@/hooks/useSlug';
+import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 
 interface WorkspaceInfo {
   id: string; name: string; slug: string; description?: string; plan?: string; logoUrl?: string;
@@ -25,6 +26,7 @@ export default function WorkspaceSettingsPage() {
   const [inviteMode, setInviteMode] = useState<"invite" | "add">("invite");
   const [inviting, setInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
 
   // Pending invitations
   const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
@@ -203,18 +205,39 @@ export default function WorkspaceSettingsPage() {
               : "Add an existing Pulse user directly by their email. They will be added immediately."}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-wrap gap-3">
             <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="colleague@example.com"
               onKeyDown={(e) => e.key === "Enter" && handleInviteOrAdd()}
-              className="flex-1 px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
-            <select value={inviteRoleId} onChange={(e) => setInviteRoleId(e.target.value)}
-              className="sm:w-40 px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none">
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>{role.name}</option>
-              ))}
-            </select>
+              className="flex-1 min-w-[200px] px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+            
+            <div className="relative sm:w-32 shrink-0">
+              <button 
+                type="button" 
+                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)} 
+                className="dropdown-toggle w-full text-left flex items-center justify-between px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-gray-900 dark:text-white"
+              >
+                <span className="truncate">{roles.find(r => r.id === inviteRoleId)?.name || "Select Role"}</span>
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none" className="shrink-0 text-gray-500 dark:text-gray-400 ml-2">
+                  <path d="M4.5 6.75L9 11.25L13.5 6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+
+              <Dropdown isOpen={isRoleDropdownOpen} onClose={() => setIsRoleDropdownOpen(false)} className="w-full mt-1 p-1 max-h-60 overflow-y-auto custom-scrollbar">
+                {roles.map((role) => (
+                  <button 
+                    key={role.id} 
+                    type="button" 
+                    onClick={() => { setInviteRoleId(role.id); setIsRoleDropdownOpen(false); }} 
+                    className={`w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors ${inviteRoleId === role.id ? "bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 font-medium" : "text-gray-700 dark:text-gray-300"}`}
+                  >
+                    {role.name}
+                  </button>
+                ))}
+              </Dropdown>
+            </div>
+
             <button onClick={handleInviteOrAdd} disabled={inviting || !inviteEmail.trim()}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
+              className="px-5 py-2.5 shrink-0 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
               {inviting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
               {inviteMode === "invite" ? "Send Invite" : "Add Member"}
             </button>

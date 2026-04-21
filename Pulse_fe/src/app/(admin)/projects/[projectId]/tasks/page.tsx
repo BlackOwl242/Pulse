@@ -7,6 +7,7 @@ import { roleService } from "@/services/roleService";
 import { Task } from "@/types/task";
 import { WorkspaceMember } from "@/types/roles";
 import { useSlug } from '@/hooks/useSlug';
+import Select from "@/components/form/Select";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All Statuses" },
@@ -216,19 +217,27 @@ export default function TaskListPage() {
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tasks..."
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none" />
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none">
-          {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none">
-          {PRIORITY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none">
-          <option value="">All Assignees</option>
-          {members.map((m) => <option key={m.userId} value={m.userId}>{m.firstName} {m.lastName}</option>)}
-        </select>
+        <Select 
+          value={statusFilter} 
+          onChange={setStatusFilter} 
+          className="w-40 shrink-0" 
+          placeholder="All Statuses"
+          options={STATUS_OPTIONS.filter(o => o.value !== "")}
+        />
+        <Select 
+          value={priorityFilter} 
+          onChange={setPriorityFilter} 
+          className="w-40 shrink-0" 
+          placeholder="All Priorities"
+          options={PRIORITY_OPTIONS.filter(o => o.value !== "")}
+        />
+        <Select 
+          value={assigneeFilter} 
+          onChange={setAssigneeFilter} 
+          className="w-48 shrink-0" 
+          placeholder="All Assignees"
+          options={members.map(m => ({ value: m.userId, label: `${m.firstName} ${m.lastName}` }))}
+        />
       </div>
 
       {/* Content */}

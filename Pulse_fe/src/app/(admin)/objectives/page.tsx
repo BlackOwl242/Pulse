@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { okrService, OKRObjective, CreateObjectiveRequest } from "@/services/okrService";
 import { useSlug } from '@/hooks/useSlug';
+import Select from "@/components/form/Select";
 
 const STATUS_MAP: Record<number, { label: string; cls: string }> = {
   0: { label: "Draft", cls: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
@@ -325,15 +326,12 @@ export default function OKRPage() {
                 <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Period</label><input type="text" value={form.period || ""} onChange={(e) => setForm({ ...form, period: e.target.value })} placeholder="e.g. Q1-2026" className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" /></div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                  >
-                    {Object.entries(STATUS_MAP).map(([key, val]) => (
-                      <option key={key} value={key}>{val.label}</option>
-                    ))}
-                  </select>
+                  <Select
+                    value={String(form.status)}
+                    onChange={(val) => setForm({ ...form, status: Number(val) })}
+                    options={Object.entries(STATUS_MAP).map(([key, val]) => ({ value: key, label: val.label }))}
+                    className="w-full"
+                  />
                 </div>
               </div>
               <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label><textarea value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Optional details..." className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-none" /></div>

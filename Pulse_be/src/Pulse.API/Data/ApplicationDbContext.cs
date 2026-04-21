@@ -57,6 +57,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingParticipant> MeetingParticipants => Set<MeetingParticipant>();
+    public DbSet<Pulse.API.Models.Whiteboard> Whiteboards => Set<Pulse.API.Models.Whiteboard>();
 
     // Module 5: Communication
     public DbSet<ChatChannel> ChatChannels => Set<ChatChannel>();

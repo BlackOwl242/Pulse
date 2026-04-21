@@ -12,6 +12,7 @@ import { attachmentService, Attachment } from "@/services/attachmentService";
 import { Task, BoardColumn } from "@/types/task";
 import { WorkspaceMember } from "@/types/roles";
 import { useSlug } from '@/hooks/useSlug';
+import Select from "@/components/form/Select";
 
 // Backend sends status as integers (no JsonStringEnumConverter)
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; statusInt: number }> = {
@@ -479,27 +480,21 @@ export default function ProjectBoardPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Status</label>
-                  <select
-                    value={Number(selectedTask.status)}
-                    onChange={(e) => handleFieldChange("status", Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none"
-                  >
-                    {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                      <option key={key} value={cfg.statusInt}>{cfg.label}</option>
-                    ))}
-                  </select>
+                  <Select
+                    value={String(Number(selectedTask.status))}
+                    onChange={(val) => handleFieldChange("status", Number(val))}
+                    options={Object.entries(STATUS_CONFIG).map(([key, cfg]) => ({ value: String(cfg.statusInt), label: cfg.label }))}
+                    className="w-full"
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Priority</label>
-                  <select
-                    value={Number(selectedTask.priority)}
-                    onChange={(e) => handleFieldChange("priority", Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none"
-                  >
-                    {PRIORITY_OPTIONS.map((p) => (
-                      <option key={p.value} value={p.value}>{p.label}</option>
-                    ))}
-                  </select>
+                  <Select
+                    value={String(Number(selectedTask.priority))}
+                    onChange={(val) => handleFieldChange("priority", Number(val))}
+                    options={PRIORITY_OPTIONS.map((p) => ({ value: String(p.value), label: p.label }))}
+                    className="w-full"
+                  />
                 </div>
               </div>
 

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { projectService, Project } from "@/services/projectService";
 import { taskService } from "@/services/taskService";
 import { Task, BoardColumn } from "@/types/task";
+import Select from "@/components/form/Select";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSlug } from '@/hooks/useSlug';
 
@@ -69,14 +70,18 @@ export default function MyTasksPage() {
             {loading ? "Loading..." : `${totalTasks} task${totalTasks !== 1 ? "s" : ""} assigned to you`}
           </p>
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none">
-          <option value="">All Statuses</option>
-          <option value="0">To Do</option>
-          <option value="1">In Progress</option>
-          <option value="2">In Review</option>
-          <option value="3">Done</option>
-        </select>
+        <Select 
+          value={statusFilter} 
+          onChange={setStatusFilter} 
+          className="w-40 shrink-0" 
+          placeholder="All Statuses"
+          options={[
+            {value: "0", label: "To Do"},
+            {value: "1", label: "In Progress"},
+            {value: "2", label: "In Review"},
+            {value: "3", label: "Done"}
+          ]}
+        />
       </div>
 
       {loading ? (

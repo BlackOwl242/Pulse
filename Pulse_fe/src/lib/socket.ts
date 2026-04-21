@@ -5,6 +5,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5182';
 
 let notificationConnection: signalR.HubConnection | null = null;
 let chatConnection: signalR.HubConnection | null = null;
+let whiteboardConnection: signalR.HubConnection | null = null;
 
 function createConnection(hubPath: string): signalR.HubConnection {
     return new signalR.HubConnectionBuilder()
@@ -104,9 +105,62 @@ export async function sendTypingIndicator(channelId: string): Promise<void> {
     }
 }
 
+export async function connectWhiteboard(
+    onUpdate: (data: { userId: string; updatePayload: string }) => void,
+    onRename?: (data: { boardId: string; newTitle: string }) => void
+): Promise<signalR.HubConnection> {
+    if (!whiteboardConnection) {
+        whiteboardConnection = createConnection('whiteboard');
+    }
+
+    whiteboardConnection.off('ReceiveUpdate');
+    whiteboardConnection.on('ReceiveUpdate', onUpdate);
+
+    if (onRename) {
+        whiteboardConnection.off('ReceiveRename');
+        whiteboardConnection.on('ReceiveRename', onRename);
+    }
+
+    if (whiteboardConnection.state === signalR.HubConnectionState.Disconnected) {
+        try {
+            await whiteboardConnection.start();
+            console.log('[SignalR] Connected to whiteboard hub');
+        } catch (err) {
+            console.warn('[SignalR] Connection start issue:', err);
+        }
+    }
+    return whiteboardConnection;
+}
+
+export async function joinWhiteboard(boardId: string): Promise<void> {
+    if (whiteboardConnection?.state === signalR.HubConnectionState.Connected) {
+        await whiteboardConnection.invoke('JoinBoard', boardId);
+    }
+}
+
+export async function leaveWhiteboard(boardId: string): Promise<void> {
+    if (whiteboardConnection?.state === signalR.HubConnectionState.Connected) {
+        await whiteboardConnection.invoke('LeaveBoard', boardId);
+    }
+}
+
+export async function sendWhiteboardUpdate(boardId: string, updatePayload: string): Promise<void> {
+    if (whiteboardConnection?.state === signalR.HubConnectionState.Connected) {
+        await whiteboardConnection.invoke('SendUpdate', boardId, updatePayload);
+    }
+}
+
+export async function sendWhiteboardRename(boardId: string, newTitle: string): Promise<void> {
+    if (whiteboardConnection?.state === signalR.HubConnectionState.Connected) {
+        await whiteboardConnection.invoke('SendRename', boardId, newTitle);
+    }
+}
+
 export function disconnectAll(): void {
     notificationConnection?.stop();
     chatConnection?.stop();
+    whiteboardConnection?.stop();
     notificationConnection = null;
     chatConnection = null;
+    whiteboardConnection = null;
 }

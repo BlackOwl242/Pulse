@@ -6,6 +6,7 @@ import { WorkspaceMember, Role } from "@/types/roles";
 import { useSlug } from '@/hooks/useSlug';
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useWorkspaceStore } from "@/stores/useWorkspaceStore";
+import Select from "@/components/form/Select";
 
 export default function MembersPage() {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
@@ -169,12 +170,12 @@ export default function MembersPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
-                <select value={inviteRoleId} onChange={(e) => setInviteRoleId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>{role.name}{role.description ? ` — ${role.description}` : ""}</option>
-                  ))}
-                </select>
+                <Select
+                  value={inviteRoleId}
+                  onChange={setInviteRoleId}
+                  options={roles.map((role) => ({ value: role.id, label: `${role.name}${role.description ? ` — ${role.description}` : ""}` }))}
+                  className="w-full"
+                />
               </div>
               {inviteSuccess && <p className="text-sm text-green-500 flex items-center gap-1"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>{inviteSuccess}</p>}
               {inviteError && <p className="text-sm text-red-500">{inviteError}</p>}

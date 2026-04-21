@@ -189,6 +189,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<ChatHub>("/hubs/chat");
+app.MapHub<WhiteboardHub>("/hubs/whiteboard");
 
 // ===== Auto-migrate + seed in development =====
 if (app.Environment.IsDevelopment())

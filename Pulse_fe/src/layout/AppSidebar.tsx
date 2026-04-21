@@ -41,11 +41,7 @@ const navItems: NavItem[] = [
     name: "My Tasks",
     path: "/my-tasks",
   },
-  {
-    icon: <UserCircleIcon />,
-    name: "Members",
-    path: "/settings/members",
-  },
+  // Members moved to othersItems
   {
     icon: (
       <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
@@ -87,31 +83,77 @@ const navItems: NavItem[] = [
   {
     icon: (
       <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+      </svg>
+    ),
+    name: "Whiteboards",
+    path: "/whiteboards",
+    new: true
+  },
+  {
+    icon: (
+      <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
         <path d="M9 19V13a1 1 0 011-1h4a1 1 0 011 1v6M5 19V9a1 1 0 011-1h2a1 1 0 011 1v10M17 19V5a1 1 0 011-1h2a1 1 0 011 1v14M3 19h18" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
     name: "Reports",
     path: "/reports",
   },
+];
+
+const othersItems: NavItem[] = [
   {
-    name: "Settings",
+    name: "Workspace Info",
     icon: (
       <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
-        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" strokeLinecap="round" strokeLinejoin="round" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
     ),
-    subItems: [
-      { name: "Workspace", path: "/settings/workspace" },
-      { name: "My Workspaces", path: "/settings/workspaces" },
-      { name: "Roles & Permissions", path: "/settings/roles" },
-      { name: "Teams", path: "/settings/teams" },
-      { name: "Audit Log", path: "/settings/audit-log" },
-    ],
+    path: "/settings/workspace",
+  },
+  {
+    name: "My Workspaces",
+    icon: (
+      <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2.28a2 2 0 011.664.89l.812 1.22A2 2 0 0012.42 7H20a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+      </svg>
+    ),
+    path: "/settings/workspaces",
+  },
+  {
+    name: "Members",
+    icon: <UserCircleIcon />,
+    path: "/settings/members",
+  },
+  {
+    name: "Teams",
+    icon: (
+      <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    ),
+    path: "/settings/teams",
+  },
+  {
+    name: "Roles & Perms",
+    icon: (
+      <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+    ),
+    path: "/settings/roles",
+  },
+  {
+    name: "Audit Log",
+    icon: (
+      <svg className="stroke-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    path: "/settings/audit-log",
   },
 ];
 
-const othersItems: NavItem[] = [];
 const supportItems: NavItem[] = [];
 
 const AppSidebar: React.FC = () => {
@@ -349,12 +391,26 @@ const AppSidebar: React.FC = () => {
           <WorkspaceSwitcher collapsed={!isExpanded && !isHovered && !isMobileOpen} />
         </div>
       </div>
-      <div className="flex flex-col overflow-y-auto  duration-300 ease-linear no-scrollbar">
-        <nav className="mb-6">
+      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar pb-8">
+        <nav className="mb-6 w-full">
           <div className="flex flex-col gap-4">
             <div>
+              {(isExpanded || isHovered || isMobileOpen) && (
+                <p className="px-5 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 ml-2 transition-opacity">Main Menu</p>
+              )}
               {renderMenuItems(navItems, "main")}
             </div>
+            
+            {othersItems.length > 0 && (
+              <div className="mt-2">
+                {(isExpanded || isHovered || isMobileOpen) ? (
+                  <p className="px-5 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 mt-4 ml-2 transition-opacity">Administration</p>
+                ) : (
+                  <div className="w-8 mx-auto h-px bg-gray-200 dark:bg-gray-800 my-4" />
+                )}
+                {renderMenuItems(othersItems, "others")}
+              </div>
+            )}
           </div>
         </nav>
       </div>

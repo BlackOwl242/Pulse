@@ -9,6 +9,7 @@ import AuthGuard from "@/components/auth/AuthGuard";
 import { ToastProvider } from "@/components/ui/toast/ToastProvider";
 import { useWorkspaceStore } from "@/stores/useWorkspaceStore";
 import InvitationDialog from "@/components/workspace/InvitationDialog";
+import { usePathname } from "next/navigation";
 
 export default function AdminLayout({
   children,
@@ -29,6 +30,10 @@ export default function AdminLayout({
     : isExpanded || isHovered
     ? "xl:ml-[290px]"
     : "xl:ml-[90px]";
+
+  const pathname = usePathname();
+  const isWhiteboardRoom = pathname?.includes("/whiteboards/") && pathname.split("/").length > 2;
+  const isFluidPage = isWhiteboardRoom;
 
   return (
     <AuthGuard>
@@ -54,7 +59,7 @@ export default function AdminLayout({
             {/* Spacer to offset fixed header height */}
             <div className="h-16 xl:h-[72px]" />
             {/* Page Content */}
-            <div className="mx-auto max-w-(--breakpoint-2xl) w-full">
+            <div className={`w-full ${!isFluidPage ? "mx-auto max-w-(--breakpoint-2xl)" : ""}`}>
               {children}
             </div>
           </div>
