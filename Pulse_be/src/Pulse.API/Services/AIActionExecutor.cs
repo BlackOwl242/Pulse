@@ -6,11 +6,13 @@ using Pulse.API.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
+using Pulse.API.Models.Entities.Organization;
+
 namespace Pulse.API.Services;
 
 public interface IAIActionExecutor
 {
-    Task<List<ActionResult>> ExecuteActionsAsync(List<AIAction> actions, Guid workspaceId, Guid userId);
+    Task<List<ActionResult>> ExecuteActionsAsync(List<AIAction> actions, Guid workspaceId, Guid userId, Guid? contextEntityId = null);
 }
 
 public class AIAction
@@ -37,14 +39,13 @@ public class AIActionExecutor : IAIActionExecutor
 {
     private readonly ApplicationDbContext _db;
     private readonly ILogger<AIActionExecutor> _logger;
-
     public AIActionExecutor(ApplicationDbContext db, ILogger<AIActionExecutor> logger)
     {
         _db = db;
         _logger = logger;
     }
 
-    public async Task<List<ActionResult>> ExecuteActionsAsync(List<AIAction> actions, Guid workspaceId, Guid userId)
+    public async Task<List<ActionResult>> ExecuteActionsAsync(List<AIAction> actions, Guid workspaceId, Guid userId, Guid? contextEntityId = null)
     {
         var results = new List<ActionResult>();
         foreach (var action in actions)
@@ -255,4 +256,5 @@ public class AIActionExecutor : IAIActionExecutor
         _logger.LogInformation("AI updated task '{Title}'", task.Title);
         return new ActionResult { Type = "update_task", Success = true, Message = $"Task '{task.Title}' updated", EntityId = task.Id };
     }
+
 }

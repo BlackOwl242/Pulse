@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Pulse.API.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -31,14 +32,28 @@ public class AIAssistantController : ControllerBase
     }
 
     [HttpGet("conversations")]
-    public async Task<IActionResult> GetConversations(string workspaceSlug)
+    public async Task<IActionResult> GetConversations(string workspaceSlug, [FromQuery] string? context = null)
     {
         var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug);
         if (workspace == null) return NotFound();
-
+        
         var userId = _currentUser.UserId!.Value;
-        var conversations = await _db.AIConversations
-            .Where(c => c.UserId == userId && c.WorkspaceId == workspace.Id)
+        var query = _db.AIConversations
+            .Where(c => c.UserId == userId && c.WorkspaceId == workspace.Id);
+
+        if (!string.IsNullOrEmpty(context))
+        {
+            if (context == "global")
+            {
+                query = query.Where(c => c.Context == "global" || string.IsNullOrEmpty(c.Context));
+            }
+            else
+            {
+                query = query.Where(c => c.Context == context);
+            }
+        }
+
+        var conversations = await query
             .OrderByDescending(c => c.CreatedAt)
             .Select(c => new
             {
@@ -74,7 +89,7 @@ public class AIAssistantController : ControllerBase
             UserId = userId,
             WorkspaceId = workspace.Id,
             Title = req.Message.Length > 60 ? req.Message[..57] + "..." : req.Message,
-            Context = req.Context ?? "global",
+            Context = string.IsNullOrEmpty(req.Context) ? "global" : req.Context,
             ContextEntityId = req.ContextEntityId
         };
         _db.AIConversations.Add(conversation);
@@ -88,18 +103,27 @@ public class AIAssistantController : ControllerBase
         _db.AIMessages.Add(userMsg);
 
         // Build rich context
-        var contextData = await BuildWorkspaceContextAsync(workspace, userId, workspaceSlug);
+        var contextData = await BuildWorkspaceContextAsync(workspace, userId, workspaceSlug, req.ContextEntityId);
 
+        var finalMessage = req.Message;
         var picoResponse = await _picoClaw.SendRequestAsync(
             action: "analyze_task",
-            message: req.Message,
+            message: finalMessage,
             data: contextData);
 
         // Execute actions if any
         var actionResults = new List<Services.ActionResult>();
-        if (picoResponse.Actions.Count > 0)
+        var actions = picoResponse.Actions;
+        
+        // Fallback: Parse actions from text if none found structurally
+        if (actions.Count == 0)
         {
-            actionResults = await _actionExecutor.ExecuteActionsAsync(picoResponse.Actions, workspace.Id, userId);
+            actions = ExtractActionsFromText(picoResponse.Content);
+        }
+
+        if (actions.Count > 0)
+        {
+            actionResults = await _actionExecutor.ExecuteActionsAsync(actions, workspace.Id, userId, req.ContextEntityId);
             await LogActionsAsync(conversation.Id, actionResults);
         }
 
@@ -118,8 +142,8 @@ public class AIAssistantController : ControllerBase
         {
             conversation.Id,
             Messages = new[] {
-                new { userMsg.Id, userMsg.Role, userMsg.Content, userMsg.CreatedAt },
-                new { aiMsg.Id, aiMsg.Role, aiMsg.Content, aiMsg.CreatedAt }
+                new { id = userMsg.Id, role = userMsg.Role, content = userMsg.Content, tokensUsed = userMsg.TokensUsed, createdAt = userMsg.CreatedAt },
+                new { id = aiMsg.Id, role = aiMsg.Role, content = aiMsg.Content, tokensUsed = aiMsg.TokensUsed, createdAt = aiMsg.CreatedAt }
             }
         });
     }
@@ -150,21 +174,33 @@ public class AIAssistantController : ControllerBase
             .ToListAsync();
         var conversationHistory = string.Join("\n", recentMessages);
 
+        var conversation = await _db.AIConversations.FindAsync(conversationId);
+        
         // Build rich context
-        var contextData = await BuildWorkspaceContextAsync(workspace, userId, workspaceSlug);
+        var contextData = await BuildWorkspaceContextAsync(workspace, userId, workspaceSlug, conversation?.ContextEntityId);
         contextData["conversationId"] = conversationId.ToString();
+        
         contextData["history"] = conversationHistory;
+        var finalMessage = req.Message;
 
         var picoResponse = await _picoClaw.SendRequestAsync(
             action: "analyze_task",
-            message: req.Message,
+            message: finalMessage,
             data: contextData);
 
         // Execute actions if any
         var actionResults = new List<Services.ActionResult>();
-        if (picoResponse.Actions.Count > 0)
+        var actions = picoResponse.Actions;
+
+        // Fallback: Parse actions from text if none found structurally
+        if (actions.Count == 0)
         {
-            actionResults = await _actionExecutor.ExecuteActionsAsync(picoResponse.Actions, workspace.Id, userId);
+            actions = ExtractActionsFromText(picoResponse.Content);
+        }
+
+        if (actions.Count > 0)
+        {
+            actionResults = await _actionExecutor.ExecuteActionsAsync(actions, workspace.Id, userId, conversation.ContextEntityId);
             await LogActionsAsync(conversationId, actionResults);
         }
 
@@ -179,7 +215,10 @@ public class AIAssistantController : ControllerBase
         _db.AIMessages.Add(aiMsg);
 
         await _db.SaveChangesAsync();
-        return Ok(new { UserMessage = new { userMsg.Id, userMsg.Content }, AIMessage = new { aiMsg.Id, Content = aiContent } });
+        return Ok(new { 
+            userMessage = new { id = userMsg.Id, role = userMsg.Role, content = userMsg.Content, tokensUsed = userMsg.TokensUsed, createdAt = userMsg.CreatedAt }, 
+            aiMessage = new { id = aiMsg.Id, role = aiMsg.Role, content = aiContent, tokensUsed = aiMsg.TokensUsed, createdAt = aiMsg.CreatedAt } 
+        });
     }
 
     private async Task LogActionsAsync(Guid conversationId, List<Services.ActionResult> results)
@@ -217,7 +256,7 @@ public class AIAssistantController : ControllerBase
         return sb.ToString();
     }
 
-    private async Task<Dictionary<string, object>> BuildWorkspaceContextAsync(Workspace workspace, Guid userId, string workspaceSlug)
+    private async Task<Dictionary<string, object>> BuildWorkspaceContextAsync(Workspace workspace, Guid userId, string workspaceSlug, Guid? currentBoardId = null)
     {
         // Get user info
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -280,15 +319,36 @@ public class AIAssistantController : ControllerBase
             .Distinct()
             .CountAsync();
 
-        return new Dictionary<string, object>
+        // Get whiteboards list
+        var whiteboards = await _db.Whiteboards
+            .Where(w => w.WorkspaceId == workspace.Id)
+            .OrderByDescending(w => w.UpdatedAt)
+            .Take(10)
+            .Select(w => new { w.Id, w.Title, w.UpdatedAt })
+            .ToListAsync();
+
+        object? currentBoard = null;
+        if (currentBoardId.HasValue)
+        {
+            currentBoard = await _db.Whiteboards
+                .Where(w => w.Id == currentBoardId.Value)
+                .Select(w => new { w.Id, w.Title })
+                .FirstOrDefaultAsync();
+        }
+
+        var context = new Dictionary<string, object>
         {
             ["workspace"] = new { workspace.Name, Slug = workspaceSlug, Plan = workspace.Plan.ToString(), MemberCount = memberCount },
             ["user"] = new { user?.FirstName, user?.LastName, user?.Email, Role = userRole ?? "Member" },
             ["myTasks"] = myTasks,
             ["projects"] = projects,
             ["upcomingMeetings"] = meetings,
-            ["systemInfo"] = "Pulse is a project management platform with Tasks, Projects, Chat, Calendar, OKR, Time Tracking, Teams, and Analytics modules."
+            ["whiteboards"] = whiteboards,
+            ["currentBoard"] = currentBoard ?? (object)new { Title = "None" },
+            ["systemInfo"] = $"Pulse is a project management platform."
         };
+
+        return context;
     }
 
     [HttpPatch("conversations/{conversationId}/rename")]
@@ -338,6 +398,72 @@ public class AIAssistantController : ControllerBase
             timestamp = DateTime.UtcNow
         });
     }
+
+    #region AI Prompts & Parsing Helpers
+
+    private List<AIAction> ExtractActionsFromText(string text)
+    {
+        var actions = new List<AIAction>();
+        if (string.IsNullOrWhiteSpace(text)) return actions;
+
+        try 
+        {
+            // 1. Try Markdown JSON blocks first (preferred)
+            var match = System.Text.RegularExpressions.Regex.Match(text, @"```json\s*([\s\S]*?)\s*```", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
+            if (match.Success)
+            {
+                try { ParseJsonString(match.Groups[1].Value, actions); } catch { }
+            }
+
+            // 2. Fallback: Search for raw JSON objects/arrays if no markdown blocks
+            if (actions.Count == 0)
+            {
+                // Using a more constrained search to avoid backtracking
+                var rawMatch = System.Text.RegularExpressions.Regex.Match(text, @"([\{\[].*[\}\]])", System.Text.RegularExpressions.RegexOptions.Singleline, TimeSpan.FromSeconds(1));
+                if (rawMatch.Success)
+                {
+                    try { ParseJsonString(rawMatch.Value, actions); } catch { }
+                }
+            }
+        }
+        catch (System.Text.RegularExpressions.RegexMatchTimeoutException)
+        {
+            // If regex hangs, we just return what we have (likely empty) instead of crashing the whole request
+        }
+
+        return actions;
+    }
+
+    private void ParseJsonString(string json, List<AIAction> actions)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        if (root.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in root.EnumerateArray())
+                ParseAction(item, actions);
+        }
+        else if (root.ValueKind == JsonValueKind.Object)
+        {
+            ParseAction(root, actions);
+        }
+    }
+
+    private void ParseAction(JsonElement el, List<AIAction> actions)
+    {
+        if (el.TryGetProperty("type", out var typeEl) && typeEl.GetString() == "create_whiteboard_shapes")
+        {
+            var action = new AIAction { Type = "create_whiteboard_shapes" };
+            if (el.TryGetProperty("data", out var dataEl))
+            {
+                foreach (var prop in dataEl.EnumerateObject())
+                    action.Data[prop.Name] = prop.Value.Clone();
+            }
+            actions.Add(action);
+        }
+    }
+
+    #endregion
 }
 
 public class StartAIConversationRequest

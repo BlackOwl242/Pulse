@@ -86,18 +86,14 @@ function WhiteboardSync({ boardId, currentWorkspaceSlug, onRemoteRename }: {
             if (updates.updated) {
                const up = Object.values(updates.updated)
                  .map((u: any) => u[1])
-                 .filter((r: any) => r.id !== editingShapeId); // Don't overwrite what we are currently typing
-               if (up.length > 0) {
-                 editor.store.put(up);
-               }
+                 .filter((r: any) => r.id !== editingShapeId);
+               if (up.length) editor.store.put(up);
             }
             if (updates.removed) {
-              const rm = Object.values(updates.removed)
-                .map((u: any) => u.id)
-                .filter((id: string) => id !== editingShapeId);
-              if (rm.length > 0) {
-                editor.store.remove(rm);
-              }
+               const rm = Object.values(updates.removed)
+                 .map((u: any) => u.id)
+                 .filter((id: string) => id !== editingShapeId);
+               if (rm.length) editor.store.remove(rm as any[]);
             }
           });
           
@@ -162,7 +158,6 @@ export default function WhiteboardRoom() {
         const res = await api.get(`/workspaces/${currentWorkspace.slug}/whiteboards/${boardId}`);
         setBoard(res.data);
         
-        // Load existing data
         if (res.data.dataJson && res.data.dataJson !== "{}") {
           try {
             const parsed = JSON.parse(res.data.dataJson);
@@ -250,7 +245,7 @@ export default function WhiteboardRoom() {
             {board.title}
           </h1>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
             <span className="text-xs text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/10 px-3 py-1.5 rounded-full font-medium flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
                 Multiplayer Active

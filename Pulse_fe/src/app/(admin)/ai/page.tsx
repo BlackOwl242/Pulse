@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { aiService, AIConversation, AIMsg } from "@/services/aiService";
 import AiLayout from "@/components/ai/AiLayout";
 import { useSlug } from '@/hooks/useSlug';
+import { useSearchParams } from "next/navigation";
 
 const THINKING_ID = "__thinking__";
 
@@ -15,13 +16,15 @@ export default function AIAssistantPage() {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const slug = useSlug();
+  const searchParams = useSearchParams();
+  const boardId = searchParams.get("boardId");
 
   const scrollToBottom = () => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
   const fetchConvs = useCallback(async () => {
-    try { setConversations(await aiService.getConversations(slug)); } catch {}
+    try { setConversations(await aiService.getConversations(slug, "global")); } catch {}
     setLoading(false);
   }, [slug]);
 
@@ -62,7 +65,13 @@ export default function AIAssistantPage() {
       setMessages([tempUserMsg, thinkingMsg]);
       scrollToBottom();
       try {
-        const result = await aiService.startConversation(slug, msgText);
+        const isWhiteboardContext = !!boardId;
+        const result = await aiService.startConversation(
+          slug, 
+          msgText, 
+          isWhiteboardContext ? "whiteboard" : undefined,
+          boardId || undefined
+        );
         setActiveConv(result.id);
         setMessages(result.messages || []);
         await fetchConvs();
@@ -75,7 +84,7 @@ export default function AIAssistantPage() {
       setMessages((prev) => [...prev, tempUserMsg, thinkingMsg]);
       scrollToBottom();
       try {
-        const result = await aiService.sendMessage(slug, activeConv, msgText);
+        const result = await aiService.sendMessage(slug, activeConv, msgText, boardId || undefined);
         // Replace thinking with actual AI response
         setMessages((prev) =>
           prev.map((m) =>
