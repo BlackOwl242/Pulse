@@ -28,6 +28,16 @@ export const workspaceService = {
     update: (slug: string, data: { name?: string; description?: string; logoUrl?: string }) =>
         api.put(`/workspaces/${slug}`, data),
 
+    uploadLogo: (slug: string, file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post<{ logoUrl: string }>(`/workspaces/${slug}/logo`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }).then(r => r.data);
+    },
+
+    removeLogo: (slug: string) => api.delete(`/workspaces/${slug}/logo`),
+
     inviteMember: (slug: string, data: { email: string; roleId: string }) =>
         api.post(`/workspaces/${slug}/invitations`, data).then((res) => res.data),
 

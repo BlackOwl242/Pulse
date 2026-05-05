@@ -68,6 +68,75 @@ public class ProfileController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpPost("avatar")]
+    public async Task<IActionResult> UploadAvatar(IFormFile file, [FromServices] IWebHostEnvironment env)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "No file provided." });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { message = "File size must be less than 5MB." });
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+            return BadRequest(new { message = "Only JPG, PNG, WEBP, and GIF images are allowed." });
+
+        var userId = _currentUser.UserId!.Value;
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+
+        var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "avatars");
+        Directory.CreateDirectory(uploadsFolder);
+
+        // Delete old avatar if exists
+        if (!string.IsNullOrEmpty(user.AvatarUrl))
+        {
+            var oldFileName = Path.GetFileName(user.AvatarUrl);
+            var oldFilePath = Path.Combine(uploadsFolder, oldFileName);
+            if (System.IO.File.Exists(oldFilePath))
+                System.IO.File.Delete(oldFilePath);
+        }
+
+        var extension = Path.GetExtension(file.FileName);
+        var uniqueFileName = $"{userId:N}_{Guid.NewGuid():N}{extension}";
+        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        user.AvatarUrl = $"/uploads/avatars/{uniqueFileName}";
+        await _db.SaveChangesAsync();
+
+        return Ok(new { avatarUrl = user.AvatarUrl });
+    }
+
+    [HttpDelete("avatar")]
+    public async Task<IActionResult> RemoveAvatar([FromServices] IWebHostEnvironment env)
+    {
+        var userId = _currentUser.UserId!.Value;
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+
+        if (!string.IsNullOrEmpty(user.AvatarUrl))
+        {
+            var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "avatars");
+            var oldFileName = Path.GetFileName(user.AvatarUrl);
+            var oldFilePath = Path.Combine(uploadsFolder, oldFileName);
+            
+            if (System.IO.File.Exists(oldFilePath))
+            {
+                System.IO.File.Delete(oldFilePath);
+            }
+
+            user.AvatarUrl = null;
+            await _db.SaveChangesAsync();
+        }
+
+        return NoContent();
+    }
 }
 
 public class UpdateProfileRequest

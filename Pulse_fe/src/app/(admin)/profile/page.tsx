@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { profileService, UserProfile, UpdateProfileRequest } from "@/services/profileService";
 import { authService } from "@/services/authService";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 const TIMEZONE_OPTIONS = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone').map(tz => {
   try {
@@ -24,6 +25,11 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState<UpdateProfileRequest>({});
+
+  // Avatar Upload State
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Password Form State
   const [pwdSaving, setPwdSaving] = useState(false);
@@ -79,6 +85,47 @@ export default function ProfilePage() {
     setPwdSaving(false);
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("File size must be less than 5MB.");
+      return;
+    }
+
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      setAvatarError("Only JPG, PNG, WEBP, and GIF images are allowed.");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setAvatarError("");
+    try {
+      const res = await profileService.uploadAvatar(file);
+      setProfile(prev => prev ? { ...prev, avatarUrl: res.avatarUrl } : null);
+      useAuthStore.setState(state => ({ user: state.user ? { ...state.user, avatarUrl: res.avatarUrl } : null }));
+    } catch (err: any) {
+      setAvatarError(err.response?.data?.message || "Failed to upload avatar.");
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setUploadingAvatar(true);
+    try {
+      await profileService.removeAvatar();
+      setProfile(prev => prev ? { ...prev, avatarUrl: undefined } : null);
+      useAuthStore.setState(state => ({ user: state.user ? { ...state.user, avatarUrl: undefined } : null }));
+    } catch (err: any) {
+      setAvatarError(err.response?.data?.message || "Failed to remove avatar.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const updateField = (key: keyof UpdateProfileRequest, value: string) => setForm({ ...form, [key]: value });
   const updatePwdField = (key: keyof typeof pwdForm, value: string) => setPwdForm({ ...pwdForm, [key]: value });
 
@@ -92,12 +139,50 @@ export default function ProfilePage() {
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
         {/* Avatar + Name */}
         <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white bg-brand-500 shrink-0">
-            {profile?.firstName?.charAt(0)}{profile?.lastName?.charAt(0)}
+          <div className="relative group shrink-0">
+            {profile?.avatarUrl ? (
+              <img src={profile.avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover" />
+            ) : (
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white bg-brand-500">
+                {profile?.firstName?.charAt(0)}{profile?.lastName?.charAt(0)}
+              </div>
+            )}
+            
+            {/* Upload Overlay */}
+            <button 
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="absolute inset-0 bg-black/50 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-100"
+            >
+              {uploadingAvatar ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+              )}
+            </button>
+            <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/jpeg, image/png, image/webp, image/gif" className="hidden" />
+
+            {/* Remove Button */}
+            {profile?.avatarUrl && !uploadingAvatar && (
+              <button
+                type="button"
+                onClick={handleRemoveAvatar}
+                className="absolute 0 top-0 right-0 translate-x-1/3 -translate-y-1/3 bg-white dark:bg-gray-800 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full p-1 shadow-md border border-gray-200 dark:border-gray-700 z-10 transition-colors"
+                title="Remove avatar"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-lg font-semibold text-gray-900 dark:text-white">{profile?.firstName} {profile?.lastName}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{profile?.email}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{profile?.email}</p>
+            {avatarError && <p className="text-xs text-red-500 mt-1">{avatarError}</p>}
           </div>
         </div>
 

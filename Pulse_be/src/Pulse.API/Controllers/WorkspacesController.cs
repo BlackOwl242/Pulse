@@ -663,6 +663,87 @@ public class WorkspacesController : ControllerBase
 
         return Ok(new { tasks, projects });
     }
+
+    /// <summary>
+    /// Upload workspace logo
+    /// </summary>
+    [HttpPost("{slug}/logo")]
+    [RequireWorkspaceMember]
+    [RequirePermission("workspace.manage")]
+    public async Task<IActionResult> UploadLogo(string slug, IFormFile file, [FromServices] IWebHostEnvironment env)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "No file provided." });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { message = "File size must be less than 5MB." });
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+            return BadRequest(new { message = "Only JPG, PNG, WEBP, and GIF images are allowed." });
+
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "workspaces");
+        Directory.CreateDirectory(uploadsFolder);
+
+        // Delete old logo if exists
+        if (!string.IsNullOrEmpty(workspace.LogoUrl))
+        {
+            var oldFileName = Path.GetFileName(workspace.LogoUrl);
+            var oldFilePath = Path.Combine(uploadsFolder, oldFileName);
+            if (System.IO.File.Exists(oldFilePath))
+                System.IO.File.Delete(oldFilePath);
+        }
+
+        var extension = Path.GetExtension(file.FileName);
+        var uniqueFileName = $"{workspace.Id:N}_{Guid.NewGuid():N}{extension}";
+        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        workspace.LogoUrl = $"/uploads/workspaces/{uniqueFileName}";
+        await _db.SaveChangesAsync();
+
+        await _activity.LogActivityAsync(workspace.Id, _currentUser.UserId!.Value, "Workspace", workspace.Id, "LogoUpdated", "Updated workspace logo");
+
+        return Ok(new { logoUrl = workspace.LogoUrl });
+    }
+
+    /// <summary>
+    /// Remove workspace logo
+    /// </summary>
+    [HttpDelete("{slug}/logo")]
+    [RequireWorkspaceMember]
+    [RequirePermission("workspace.manage")]
+    public async Task<IActionResult> RemoveLogo(string slug, [FromServices] IWebHostEnvironment env)
+    {
+        var workspace = await _db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug);
+        if (workspace == null) return NotFound();
+
+        if (!string.IsNullOrEmpty(workspace.LogoUrl))
+        {
+            var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "workspaces");
+            var oldFileName = Path.GetFileName(workspace.LogoUrl);
+            var oldFilePath = Path.Combine(uploadsFolder, oldFileName);
+            
+            if (System.IO.File.Exists(oldFilePath))
+            {
+                System.IO.File.Delete(oldFilePath);
+            }
+
+            workspace.LogoUrl = null;
+            await _db.SaveChangesAsync();
+
+            await _activity.LogActivityAsync(workspace.Id, _currentUser.UserId!.Value, "Workspace", workspace.Id, "LogoRemoved", "Removed workspace logo");
+        }
+
+        return NoContent();
+    }
 }
 
 public class ChangeMemberRoleRequest

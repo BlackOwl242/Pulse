@@ -20,6 +20,11 @@ export default function WorkspaceSettingsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
+  // Logo upload state
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState("");
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
+
   // Invite state
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRoleId, setInviteRoleId] = useState("");
@@ -96,6 +101,45 @@ export default function WorkspaceSettingsPage() {
     setSaving(false);
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !slug) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setLogoError("File size must be less than 5MB.");
+      return;
+    }
+
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      setLogoError("Only JPG, PNG, WEBP, and GIF images are allowed.");
+      return;
+    }
+
+    setUploadingLogo(true);
+    setLogoError("");
+    try {
+      const res = await workspaceService.uploadLogo(slug as string, file);
+      setWs(prev => prev ? { ...prev, logoUrl: res.logoUrl } : null);
+    } catch (err: any) {
+      setLogoError(err.response?.data?.message || "Failed to upload logo.");
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    setUploadingLogo(true);
+    try {
+      await workspaceService.removeLogo(slug as string);
+      setWs(prev => prev ? { ...prev, logoUrl: undefined } : null);
+    } catch (err: any) {
+      setLogoError(err.response?.data?.message || "Failed to remove logo.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleInviteOrAdd = async () => {
     if (!inviteEmail.trim() || !inviteRoleId) return;
     setInviting(true);
@@ -135,18 +179,64 @@ export default function WorkspaceSettingsPage() {
 
       {/* Workspace Info Card */}
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6 space-y-6">
-        <div className="flex flex-wrap gap-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" /><path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 015.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" /></svg>
-            Slug: {ws?.slug}
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
-            {memberCount} Members
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
-            Plan: {ws?.plan || "Free"}
-          </span>
+        <div className="flex items-center gap-4 border-b border-gray-100 dark:border-gray-800 pb-6">
+          <div className="relative group shrink-0">
+            {ws?.logoUrl ? (
+              <img src={ws.logoUrl} alt="Logo" className="w-16 h-16 rounded-xl object-cover border border-gray-200 dark:border-gray-700" />
+            ) : (
+              <div className="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold text-white bg-brand-500">
+                {ws?.name?.charAt(0) || "W"}
+              </div>
+            )}
+            
+            {/* Upload Overlay */}
+            <button 
+              type="button"
+              onClick={() => logoInputRef.current?.click()}
+              disabled={uploadingLogo}
+              className="absolute inset-0 bg-black/50 text-white rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-100"
+            >
+              {uploadingLogo ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+              )}
+            </button>
+            <input type="file" ref={logoInputRef} onChange={handleLogoUpload} accept="image/jpeg, image/png, image/webp, image/gif" className="hidden" />
+
+            {/* Remove Button */}
+            {ws?.logoUrl && !uploadingLogo && (
+              <button
+                type="button"
+                onClick={handleRemoveLogo}
+                className="absolute -top-2 -right-2 bg-white dark:bg-gray-800 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full p-1 shadow-md border border-gray-200 dark:border-gray-700 z-10 transition-colors"
+                title="Remove logo"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap gap-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" /><path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 015.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" /></svg>
+                Slug: {ws?.slug}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+                {memberCount} Members
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
+                Plan: {ws?.plan || "Free"}
+              </span>
+            </div>
+            {logoError && <p className="text-xs text-red-500 mt-2">{logoError}</p>}
+          </div>
         </div>
 
         <div className="space-y-4">
